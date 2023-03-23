@@ -1,12 +1,9 @@
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
-from django.db.models.aggregates import Count
-from django.db.models.expressions import Value
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
-from rest_framework.validators import UniqueTogetherValidator
 
 from recipes.models import Ingredient, Recipe, RecipeIngredient, Subscribe, Tag
 
@@ -39,7 +36,10 @@ class TokenSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     ERROR_MSG,
                     code='authorization')
-        else:
+        if not authenticate(
+                request=self.context.get('request'),
+                email=email,
+                password=password):
             msg = 'Необходимо указать "электронную почту" и "пароль".'
             raise serializers.ValidationError(
                 msg,
@@ -67,16 +67,6 @@ class UserListSerializer(
         fields = (
             'email', 'id', 'username',
             'first_name', 'last_name', 'is_subscribed')
-
-    def get_queryset(self):
-        return self.request.user.follower.select_related(
-            'following'
-        ).prefetch_related(
-            'following__recipe'
-        ).annotate(
-            recipes_count=Count('following__recipe'),
-            is_subscribed=Value(True),
-        )
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -309,6 +299,12 @@ class SubscribeSerializer(serializers.ModelSerializer):
         fields = (
             'email', 'id', 'username', 'first_name', 'last_name',
             'is_subscribed', 'recipes', 'recipes_count',)
+
+    def to_representation(self, obj):
+        return UserListSerializer(
+            obj.author,
+            context={'request': self.context.get('request')}
+        ).data
 
     def get_recipes(self, obj):
         request = self.context.get('request')

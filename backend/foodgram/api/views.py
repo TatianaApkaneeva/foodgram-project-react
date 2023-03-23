@@ -124,16 +124,6 @@ class UsersViewSet(UserViewSet):
     serializer_class = UserListSerializer
     permission_classes = (IsAuthenticated,)
 
-    def get_queryset(self):
-        return User.objects.annotate(
-            is_subscribed=Exists(
-                self.request.user.follower.filter(
-                    author=OuterRef('id'))
-            )).prefetch_related(
-                'follower', 'following'
-        ) if self.request.user.is_authenticated else User.objects.annotate(
-            is_subscribed=Value(False))
-
     def get_serializer_class(self):
         if self.request.method.lower() == 'post':
             return UserCreateSerializer
