@@ -9,7 +9,7 @@ services:
       - ./.env
 
   backend:
-    image: tatiapk/foodgram:latest
+    image: tatiapk/foodgram_backend:latest
     restart: always
     volumes:
       - data_value:/app/data/
