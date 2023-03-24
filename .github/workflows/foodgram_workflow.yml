@@ -10,7 +10,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3.8
+        python-version: 3.10
 
     - name: Install dependencies
       run: |
@@ -40,13 +40,13 @@ jobs:
             with:
               context: backend/
               push: true
-              tags: themasterid/foodgram_backend:latest
+              tags: tatiapk/foodgram_backend:latest
           - name: Push frontend
             uses: docker/build-push-action@v2 
             with:
               context: frontend/
               push: true
-              tags: themasterid/foodgram_frontend:latest
+              tags: tatiapk/foodgram_frontend:latest
 
   deploy:
       if: ${{ github.ref }} == 'master'
@@ -61,8 +61,8 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
           script: |
-            sudo docker pull themasterid/foodgram_backend:latest
-            sudo docker pull themasterid/foodgram_frontend:latest
+            sudo docker pull tatiapk/foodgram_backend:latest
+            sudo docker pull tatiapk/foodgram_frontend:latest
             cd infra/
             sudo docker-compose stop
             sudo docker-compose rm backend
