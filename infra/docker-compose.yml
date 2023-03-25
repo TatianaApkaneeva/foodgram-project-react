@@ -12,7 +12,7 @@ services:
     image: tatiapk/foodgram_backend:latest
     restart: always
     volumes:
-      - data_value:/app/data/
+      - db_value:/app/data/
       - static_value:/app/static/
       - media_value:/app/media/
     depends_on:
