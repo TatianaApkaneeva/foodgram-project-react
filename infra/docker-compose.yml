@@ -39,10 +39,9 @@ services:
       - media_value:/var/html/media/
     restart: always
     depends_on:
-      - backend
       - frontend
 
 volumes:
   static_value:
   media_value:
-  db_data:
+  data_value:
