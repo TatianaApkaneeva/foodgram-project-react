@@ -3,7 +3,7 @@ services:
   db:
     image: postgres:13.0-alpine
     volumes:
-      - db_value:/var/lib/postgresql/data/
+      - postgres_data:/var/lib/postgresql/data/
     env_file:
       - ./.env
 
@@ -11,7 +11,7 @@ services:
     image: tatiapk/foodgram_backend:latest
     restart: always
     volumes:
-      - db_value:/app/data/
+      - postgres_data:/app/data/
       - static_value:/app/static/
       - media_value:/app/media/
     depends_on:
@@ -24,7 +24,7 @@ services:
     volumes:
       - ../frontend/:/app/result_build/
     depends_on:
-      - backend
+      - db
 
   nginx:
     image: nginx:1.21.3-alpine
@@ -38,9 +38,9 @@ services:
       - media_value:/var/html/media/
     restart: always
     depends_on:
-      - frontend
+      - backend
 
 volumes:
   static_value:
   media_value:
-  db_value:
+  postgres_data:
