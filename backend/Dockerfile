@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED 1
 
 RUN apt update \
     && pip install --upgrade pip \
-    && apt add --virtual build-deps gcc python3-dev musl-dev
+    && apt add --virtual build-deps gcc python3-dev musl-dev \
     && apt add libpq \
     && apt add postgresql-dev \
     && apt add jpeg-dev zlib-dev libjpeg \
