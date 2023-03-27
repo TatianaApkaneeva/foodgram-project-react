@@ -18,7 +18,6 @@ SECRET_KEY = ('SECRET_KEY', 'my_secret_code_35h4jilz@4zqj=rq&agdol^##zgl9(vs')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-
 ALLOWED_HOSTS = ['*']
 
 AUTH_USER_MODEL = 'users.User'
