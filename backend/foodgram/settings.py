@@ -16,7 +16,7 @@ BASE_DIR = os.path.dirname(
 SECRET_KEY = ('SECRET_KEY', 'my_secret_code_35h4jilz@4zqj=rq&agdol^##zgl9(vs')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -70,7 +70,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'foodgram.wsgi.application'
 
-CSRF_COOKIE_DOMAIN = '158.160.47.208'
+CSRF_TRUSTED_ORIGINS = ['http://158.160.47.208', 'https://*',]
+
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
