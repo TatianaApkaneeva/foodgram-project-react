@@ -36,10 +36,7 @@ class TokenSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     ERROR_MSG,
                     code='authorization')
-        if not authenticate(
-                request=self.context.get('request'),
-                email=email,
-                password=password):
+        else:
             msg = 'Необходимо указать "электронную почту" и "пароль".'
             raise serializers.ValidationError(
                 msg,
@@ -299,12 +296,6 @@ class SubscribeSerializer(serializers.ModelSerializer):
         fields = (
             'email', 'id', 'username', 'first_name', 'last_name',
             'is_subscribed', 'recipes', 'recipes_count',)
-
-    def to_representation(self, obj):
-        return UserListSerializer(
-            obj.author,
-            context={'request': self.context.get('request')}
-        ).data
 
     def get_recipes(self, obj):
         request = self.context.get('request')

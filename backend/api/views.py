@@ -146,6 +146,22 @@ class UsersViewSet(UserViewSet):
             pages, many=True,
             context={'request': request})
         return self.get_paginated_response(serializer.data)
+    
+    @action(detail=False, methods=['post'],
+            permission_classes=(IsAuthenticated,))
+    def set_password(request):
+        """Изменение пароля"""
+        serializer = UserPasswordSerializer(
+            data=request.data,
+            context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {'message': 'Пароль успешно изменен!'},
+                status=status.HTTP_201_CREATED)
+        return Response(
+            {'error': 'Введите корректные данные!'},
+            status=status.HTTP_400_BAD_REQUEST)
 
 
 class RecipesViewSet(viewsets.ModelViewSet):
@@ -191,23 +207,18 @@ class RecipesViewSet(viewsets.ModelViewSet):
         ingredients = Ingredient.objects.filter(
             recipe__shopping_cart__user=request.user).values(
             'ingredients__name',
-            'ingredients__measurement_unit').annotate(total=Sum('amount'))
-        shopping_list = 'Cписок покупок:\n'
-        if ingredients:
-            for number, ingredient in enumerate(ingredients, start=1):
-                shopping_list += (
-                    f'{number} '
-                    f'{ingredient["ingredients__name"]} - '
-                    f'{ingredient["total"]} '
-                    f'{ingredient["ingredients__measurement_unit"]}\n')
-
-            grocery_list = 'grocery_list.txt'
-            response = HttpResponse(shopping_list,
-                                    content_type='text/plain')
-            response['Content-Disposition'] = (f'attachment;'
+            'ingredients__measurement_unit', 'amount')
+        shopping_list = '\n'.join([
+            f'{ingredient["ingredients__name"]} - '
+            f'{ingredient["amount"]} '
+            f'{ingredient["ingredients__measurement_unit"]}'
+            for ingredient in ingredients
+        ])
+        grocery_list = 'grocery_list.txt'
+        response = HttpResponse(shopping_list, content_type='text/plain')
+        response['Content-Disposition'] = (f'attachment;'
                                                f'filename={grocery_list}')
-            return response
-        return HttpResponse('Список пуст')
+        return response
 
 
 class TagsViewSet(
@@ -227,19 +238,3 @@ class IngredientsViewSet(
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     filterset_class = IngredientFilter
-
-
-@api_view(['post'])
-def set_password(request):
-    """Изменение пароля"""
-    serializer = UserPasswordSerializer(
-        data=request.data,
-        context={'request': request})
-    if serializer.is_valid():
-        serializer.save()
-        return Response(
-            {'message': 'Пароль успешно изменен!'},
-            status=status.HTTP_201_CREATED)
-    return Response(
-        {'error': 'Введите корректные данные!'},
-        status=status.HTTP_400_BAD_REQUEST)
