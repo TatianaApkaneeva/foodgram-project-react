@@ -1,7 +1,6 @@
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
-from django.shortcuts import get_object_or_404
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 
@@ -193,7 +192,6 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'amount': 'Количество ингредиента более или равно 1!'
                 })
-        
         tags = self.initial_data.get('tags')
         if tags is None:
             raise serializers.ValidationError(
@@ -205,7 +203,7 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         )
         if tags_list > tags_set:
             raise serializers.ValidationError('Тэг должен быть уникальным!')
-        return data        
+        return data
 
     def validate_cooking_time(self, data):
         cooking_time = self.initial_data.get('cooking_time')
