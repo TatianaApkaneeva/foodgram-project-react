@@ -20,10 +20,6 @@ urlpatterns = [
           AuthToken.as_view(),
           name='login'),
      path(
-          'users/set_password/',
-          UsersViewSet.as_view(),
-          name='set_password'),
-     path(
           'users/<int:user_id>/subscribe/',
           AddAndDeleteSubscribe.as_view(),
           name='subscribe'),
