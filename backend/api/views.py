@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from django.db.models.aggregates import Sum
 from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -8,7 +7,7 @@ from djoser.views import UserViewSet
 from rest_framework import generics, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.permissions import (SAFE_METHODS, AllowAny,
                                         IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
@@ -215,10 +214,9 @@ class RecipesViewSet(viewsets.ModelViewSet):
             for ingredient in ingredients
         ])
         grocery_list = 'grocery_list.txt'
-        response = HttpResponse(shopping_list, content_type='text/plain')
-        response['Content-Disposition'] = (f'attachment;'
-                                               f'filename={grocery_list}')
-        return response
+        file = HttpResponse(shopping_list, content_type='text/plain')
+        file['Content-Disposition'] = f'attachment; filename={grocery_list}'
+        return file
 
 
 class TagsViewSet(
