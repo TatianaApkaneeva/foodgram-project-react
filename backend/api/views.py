@@ -9,7 +9,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework import status
 from rest_framework.generics import UpdateAPIView
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.permissions import (SAFE_METHODS, AllowAny,
                                         IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
@@ -234,6 +234,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
         response = HttpResponse(shopping_cart, content_type='text/plain')
         response['Content-Disposition'] = f'attachment; filename={filename}'
         return response
+
 
 @api_view(['post'])
 def set_password(request):
