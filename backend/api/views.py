@@ -1,9 +1,15 @@
+import io
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
+from django.db.models.aggregates import Sum
 from django.db.models.expressions import Exists, OuterRef, Value
-from django.http import HttpResponse
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
 from rest_framework import generics, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -24,6 +30,7 @@ from .serializers import (IngredientSerializer, RecipesReadSerializer,
                           UserPasswordSerializer)
 
 User = get_user_model()
+FILENAME = 'shoppingcart.pdf'
 
 
 class GetObjectMixin:
@@ -202,21 +209,44 @@ class RecipesViewSet(viewsets.ModelViewSet):
         methods=['get'],
         permission_classes=(IsAuthenticated,))
     def download_shopping_cart(self, request):
-        """Скачиваем список ингредиентов"""
-        ingredients = Ingredient.objects.filter(
-            recipe__shopping_cart__user=request.user).values(
-            'ingredients__name',
-            'ingredients__measurement_unit', 'amount')
-        shopping_list = '\n'.join([
-            f'{ingredient["ingredients__name"]} - '
-            f'{ingredient["amount"]} '
-            f'{ingredient["ingredients__measurement_unit"]}'
-            for ingredient in ingredients
-        ])
-        grocery_list = 'grocery_list.txt'
-        file = HttpResponse(shopping_list, content_type='text/plain')
-        file['Content-Disposition'] = f'attachment; filename={grocery_list}'
-        return file
+        """Качаем список с ингредиентами."""
+
+        buffer = io.BytesIO()
+        page = canvas.Canvas(buffer)
+        pdfmetrics.registerFont(TTFont('Vera', 'Vera.ttf'))
+        x_position, y_position = 50, 800
+        shopping_cart = (
+            request.user.shopping_cart.recipe.
+            values(
+                'ingredients__name',
+                'ingredients__measurement_unit'
+            ).annotate(amount=Sum('recipe__amount')).order_by())
+        page.setFont('Vera', 14)
+        if shopping_cart:
+            indent = 20
+            page.drawString(x_position, y_position, 'Cписок покупок:')
+            for index, recipe in enumerate(shopping_cart, start=1):
+                page.drawString(
+                    x_position, y_position - indent,
+                    f'{index}. {recipe["ingredients__name"]} - '
+                    f'{recipe["amount"]} '
+                    f'{recipe["ingredients__measurement_unit"]}.')
+                y_position -= 15
+                if y_position <= 50:
+                    page.showPage()
+                    y_position = 800
+            page.save()
+            buffer.seek(0)
+            return FileResponse(
+                buffer, as_attachment=True, filename=FILENAME)
+        page.setFont('Vera', 24)
+        page.drawString(
+            x_position,
+            y_position,
+            'Cписок покупок пуст!')
+        page.save()
+        buffer.seek(0)
+        return FileResponse(buffer, as_attachment=True, filename=FILENAME)
 
 
 class TagsViewSet(
