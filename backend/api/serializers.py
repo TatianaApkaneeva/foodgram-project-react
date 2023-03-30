@@ -2,6 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
+from django.shortcuts import get_object_or_404
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 
@@ -181,39 +182,40 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
         read_only_fields = ('author',)
 
     def validate(self, data):
-        ingredients = self.initial_data.get('ingredients')
-        ingredients_list = []
-        for ingredient in ingredients:
-            ingredient_id = ingredient['id']
-            if ingredient_id in ingredients_list:
-                raise serializers.ValidationError({
-                    'ingredients': 'Ингредиент должны быть уникальным!'
-                })
-            ingredients_list.append(ingredient_id)
-            amount = ingredient['amount']
-            if int(amount) <= 0:
-                raise serializers.ValidationError({
-                    'amount': 'Количество ингредиента более или равно 1!'
-                })
-        tags = self.initial_data.get('tags')
-        if tags is None:
+        ingredients = data['ingredients']
+        ingredient_list = []
+        for items in ingredients:
+            ingredient = get_object_or_404(
+                Ingredient, id=items['id'])
+            if ingredient in ingredient_list:
+                raise serializers.ValidationError(
+                    'Ингредиент должен быть уникальным!')
+            ingredient_list.append(ingredient)
+        tags = data['tags']
+        if not tags:
             raise serializers.ValidationError(
-                'Нужен min один тэг для рецепта!'
-            )
-        tags_list = len(tags)
-        tags_set = len(
-            set([tag['id'] for tag in tags])
-        )
-        if tags_list > tags_set:
-            raise serializers.ValidationError('Тэг должен быть уникальным!')
+                'Нужен хотя бы один тэг для рецепта!')
+        for tag_name in tags:
+            if not Tag.objects.filter(name=tag_name).exists():
+                raise serializers.ValidationError(
+                    f'Тэга {tag_name} не существует!')
         return data
 
-    def validate_cooking_time(self, data):
-        cooking_time = self.initial_data.get('cooking_time')
+    def validate_cooking_time(self, cooking_time):
         if int(cooking_time) < 1:
             raise serializers.ValidationError(
-                'Время приготовления более или равно 1 минуте!')
-        return data
+                'Время приготовления >= 1!')
+        return cooking_time
+
+    def validate_ingredients(self, ingredients):
+        if not ingredients:
+            raise serializers.ValidationError(
+                'Мин. 1 ингредиент в рецепте!')
+        for ingredient in ingredients:
+            if int(ingredient.get('amount')) < 1:
+                raise serializers.ValidationError(
+                    'Количество ингредиента >= 1!')
+        return ingredients
 
     def create_ingredients(self, ingredients, recipe):
         for ingredient in ingredients:
