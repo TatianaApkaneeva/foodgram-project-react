@@ -1,6 +1,7 @@
+from django.contrib.auth.password_validation import validate_password
+from django.core import exceptions as django_exceptions
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.hashers import make_password
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 
@@ -87,25 +88,27 @@ class UserPasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(
         label='Текущий пароль')
 
-    def validate_current_password(self, current_password):
-        user = self.context['request'].user
-        if not authenticate(
-                username=user.email,
-                password=current_password):
+    def validate(self, obj):
+        try:
+            validate_password(obj['new_password'])
+        except django_exceptions.ValidationError as e:
             raise serializers.ValidationError(
-                ERROR_MSG, code='authorization')
-        return current_password
+                {'new_password': list(e.messages)}
+            )
+        return super().validate(obj)
 
-    def validate_new_password(self, new_password):
-        validators.validate_password(new_password)
-        return new_password
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        password = make_password(
-            validated_data.get('new_password'))
-        user.password = password
-        user.save()
+    def update(self, instance, validated_data):
+        if not instance.check_password(validated_data['current_password']):
+            raise serializers.ValidationError(
+                {'current_password': 'Неправильный пароль.'}
+            )
+        if (validated_data['current_password']
+           == validated_data['new_password']):
+            raise serializers.ValidationError(
+                {'new_password': 'Новый пароль должен отличаться от текущего.'}
+            )
+        instance.set_password(validated_data['new_password'])
+        instance.save()
         return validated_data
 
 
