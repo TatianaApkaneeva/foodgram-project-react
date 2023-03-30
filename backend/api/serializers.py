@@ -100,14 +100,6 @@ class UserPasswordSerializer(serializers.Serializer):
     def validate_new_password(self, new_password):
         validators.validate_password(new_password)
         return new_password
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        password = make_password(
-            validated_data.get('new_password'))
-        user.password = password
-        user.save()
-        return validated_data
     
     def save(self, **kwargs):
         password = self.validated_data['new_password1']
