@@ -1,17 +1,13 @@
-import io
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from django.db.models.aggregates import Sum
 from django.db.models.expressions import Exists, OuterRef, Value
-from django.http import FileResponse
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
 from rest_framework import generics, status, viewsets
 from rest_framework.authtoken.models import Token
+from rest_framework import status
+from rest_framework.generics import UpdateAPIView
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
 from rest_framework.permissions import (SAFE_METHODS, AllowAny,
@@ -30,7 +26,6 @@ from .serializers import (IngredientSerializer, RecipesReadSerializer,
                           UserPasswordSerializer)
 
 User = get_user_model()
-FILENAME = 'shoppingcart.pdf'
 
 
 class GetObjectMixin:
@@ -51,6 +46,25 @@ class PermissionMixin:
 
     permission_classes = (IsAdminOrReadOnly,)
     pagination_class = None
+
+
+class TagsViewSet(
+        PermissionMixin,
+        viewsets.ModelViewSet):
+    """Список тэгов"""
+
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+
+
+class IngredientsViewSet(
+        PermissionMixin,
+        viewsets.ModelViewSet):
+    """Список ингредиентов"""
+
+    queryset = Ingredient.objects.all()
+    serializer_class = IngredientSerializer
+    filterset_class = IngredientFilter
 
 
 class AddAndDeleteSubscribe(
@@ -124,6 +138,21 @@ class AuthToken(ObtainAuthToken):
             status=status.HTTP_201_CREATED)
 
 
+class ChangePasswordView(UpdateAPIView):
+    serializer_class = UserPasswordSerializer
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        # if using drf authtoken, create a new token 
+        if hasattr(user, 'auth_token'):
+            user.auth_token.delete()
+        token, created = Token.objects.get_or_create(user=user)
+        # return new token
+        return Response({'token': token.key}, status=status.HTTP_200_OK)
+
+
 class UsersViewSet(UserViewSet):
     """Пользователи"""
 
@@ -152,22 +181,6 @@ class UsersViewSet(UserViewSet):
             pages, many=True,
             context={'request': request})
         return self.get_paginated_response(serializer.data)
-    
-    @action(detail=False, methods=['post'],
-            permission_classes=(IsAuthenticated,))
-    def set_password(request):
-        """Изменение пароля"""
-        serializer = UserPasswordSerializer(
-            data=request.data,
-            context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {'message': 'Пароль успешно изменен!'},
-                status=status.HTTP_201_CREATED)
-        return Response(
-            {'error': 'Введите корректные данные!'},
-            status=status.HTTP_400_BAD_REQUEST)
 
 
 class RecipesViewSet(viewsets.ModelViewSet):
@@ -210,59 +223,16 @@ class RecipesViewSet(viewsets.ModelViewSet):
         permission_classes=(IsAuthenticated,))
     def download_shopping_cart(self, request):
         """Качаем список с ингредиентами."""
-
-        buffer = io.BytesIO()
-        page = canvas.Canvas(buffer)
-        pdfmetrics.registerFont(TTFont('Vera', 'Vera.ttf'))
-        x_position, y_position = 50, 800
-        shopping_cart = (
-            request.user.shopping_cart.recipe.
-            values(
-                'ingredients__name',
-                'ingredients__measurement_unit'
-            ).annotate(amount=Sum('recipe__amount')).order_by())
-        page.setFont('Vera', 14)
-        if shopping_cart:
-            indent = 20
-            page.drawString(x_position, y_position, 'Cписок покупок:')
-            for index, recipe in enumerate(shopping_cart, start=1):
-                page.drawString(
-                    x_position, y_position - indent,
-                    f'{index}. {recipe["ingredients__name"]} - '
-                    f'{recipe["amount"]} '
-                    f'{recipe["ingredients__measurement_unit"]}.')
-                y_position -= 15
-                if y_position <= 50:
-                    page.showPage()
-                    y_position = 800
-            page.save()
-            buffer.seek(0)
-            return FileResponse(
-                buffer, as_attachment=True, filename=FILENAME)
-        page.setFont('Vera', 24)
-        page.drawString(
-            x_position,
-            y_position,
-            'Cписок покупок пуст!')
-        page.save()
-        buffer.seek(0)
-        return FileResponse(buffer, as_attachment=True, filename=FILENAME)
-
-
-class TagsViewSet(
-        PermissionMixin,
-        viewsets.ModelViewSet):
-    """Список тэгов"""
-
-    queryset = Tag.objects.all()
-    serializer_class = TagSerializer
-
-
-class IngredientsViewSet(
-        PermissionMixin,
-        viewsets.ModelViewSet):
-    """Список ингредиентов"""
-
-    queryset = Ingredient.objects.all()
-    serializer_class = IngredientSerializer
-    filterset_class = IngredientFilter
+        ingredients = Ingredient.objects.filter(
+            user=request.user).values(
+            'ingredient__name', 'ingredient__measurement_unit', 'amount'
+        )
+        shopping_cart = '\n'.join([
+            f'{ingredient["ingredient__name"]} - {ingredient["amount"]} '
+            f'{ingredient["ingredient__measurement_unit"]}'
+            for ingredient in ingredients
+        ])
+        filename = 'shopping_cart.txt'
+        response = HttpResponse(shopping_cart, content_type='text/plain')
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        return response
