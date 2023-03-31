@@ -11,6 +11,8 @@ BASE_DIR = os.path.dirname(
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
+FONT_PATH = os.path.join(BASE_DIR, 'data/vera.ttf')
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = ('SECRET_KEY', 'my_secret_code_35h4jilz@4zqj=rq&agdol^##zgl9(vs')
 
