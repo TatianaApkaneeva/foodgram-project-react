@@ -89,9 +89,7 @@ class UserPasswordSerializer(serializers.Serializer):
 
     def validate_current_password(self, current_password):
         user = self.context['request'].user
-        if not authenticate(
-                username=user.email,
-                password=current_password):
+        if not user.check_password(current_password):
             raise serializers.ValidationError(
                 ERROR_MSG, code='authorization')
         return current_password
