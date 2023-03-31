@@ -1,7 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from django.db.models.expressions import Exists, OuterRef, Value
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from rest_framework import generics, status, viewsets
@@ -23,7 +21,8 @@ from .serializers import (IngredientSerializer, RecipesReadSerializer,
                           RecipesWriteSerializer, SubscribeRecipeSerializer,
                           SubscribeSerializer, TagSerializer, TokenSerializer,
                           UserCreateSerializer, UserListSerializer,
-                          UserPasswordSerializer)
+                          UserPasswordSerializer, FavoriteSerializer,
+                          ShoppingCartSerializer)
 
 User = get_user_model()
 
@@ -192,45 +191,43 @@ class RecipesViewSet(viewsets.ModelViewSet):
         if self.request.method in SAFE_METHODS:
             return RecipesReadSerializer
         return RecipesWriteSerializer
-
-    def get_queryset(self):
-        return Recipe.objects.annotate(
-            is_favorited=Exists(
-                FavoriteRecipe.objects.filter(
-                    user=self.request.user, recipe=OuterRef('id'))),
-            is_in_shopping_cart=Exists(
-                ShoppingCart.objects.filter(
-                    user=self.request.user,
-                    recipe=OuterRef('id')))
-        ).select_related('author').prefetch_related(
-            'tags', 'ingredients', 'recipe',
-            'shopping_cart', 'favorite_recipe'
-        ) if self.request.user.is_authenticated else Recipe.objects.annotate(
-            is_in_shopping_cart=Value(False),
-            is_favorited=Value(False),
-        ).select_related('author').prefetch_related(
-            'tags', 'ingredients', 'recipe',
-            'shopping_cart', 'favorite_recipe')
-
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
-
-    @action(
-        detail=False,
-        methods=['get'],
-        permission_classes=(IsAuthenticated,))
-    def download_shopping_cart(self, request):
-        """Качаем список с ингредиентами."""
-        ingredients = Ingredient.objects.filter(
-            user=request.user).values(
-            'ingredient__name', 'ingredient__measurement_unit', 'amount'
+    
+    @action(detail=True, permission_classes=[IsAuthenticated])
+    def favorite(self, request, pk):
+        data = {'user': request.user.id, 'recipe': pk}
+        serializer = FavoriteSerializer(
+            data=data, context={'request': request}
         )
-        shopping_cart = '\n'.join([
-            f'{ingredient["ingredient__name"]} - {ingredient["amount"]} '
-            f'{ingredient["ingredient__measurement_unit"]}'
-            for ingredient in ingredients
-        ])
-        filename = 'shopping_cart.txt'
-        response = HttpResponse(shopping_cart, content_type='text/plain')
-        response['Content-Disposition'] = f'attachment; filename={filename}'
-        return response
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @favorite.mapping.delete
+    def delete_favorite(self, request, pk):
+        user = request.user
+        recipe = get_object_or_404(Recipe, id=pk)
+        favorite = get_object_or_404(
+            FavoriteRecipe, user=user, recipe=recipe
+        )
+        favorite.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, permission_classes=[IsAuthenticated])
+    def shopping_cart(self, request, pk):
+        data = {'user': request.user.id, 'recipe': pk}
+        serializer = ShoppingCartSerializer(
+            data=data, context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @shopping_cart.mapping.delete
+    def delete_shopping_cart(self, request, pk):
+        user = request.user
+        recipe = get_object_or_404(Recipe, id=pk)
+        shopping_cart = get_object_or_404(
+            ShoppingCart, user=user, recipe=recipe
+        )
+        shopping_cart.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

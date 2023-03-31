@@ -4,7 +4,8 @@ from django.shortcuts import get_object_or_404
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 
-from recipes.models import Ingredient, Recipe, RecipeIngredient, Subscribe, Tag
+from recipes.models import (Ingredient, Recipe, RecipeIngredient, Subscribe,
+                            Tag, ShoppingCart, FavoriteRecipe)
 
 User = get_user_model()
 ERROR_MSG = 'Не удается войти в систему с текущими данными.'
@@ -295,24 +296,74 @@ class SubscribeSerializer(serializers.ModelSerializer):
         fields = (
             'email', 'id', 'username', 'first_name', 'last_name',
             'is_subscribed', 'recipes', 'recipes_count',)
+        extra_kwargs = {'author': {'write_only': True},
+                        'follower': {'write_only': True}}
 
     def get_recipes(self, obj):
-        request = self.context.get('request')
-        limit = request.GET.get('recipes_limit')
-        recipes = (
-            obj.author.recipe.all()[:int(limit)] if limit
-            else obj.author.recipe.all())
-        return SubscribeRecipeSerializer(
-            recipes,
-            many=True).data
+        queryset = Recipe.objects.filter(author=obj.author.id)
+        serializer = SubscribeRecipeSerializer(queryset, many=True)
+        return serializer.data
+
+    def get_recipes_count(self, obj):
+        queryset = Recipe.objects.filter(author=obj.author.id).count()
+        return queryset
+
+    def validate(self, data):
+        print(data)
+        if data['author'] == data['follower']:
+            raise serializers.ValidationError('Нельзя подписаться на себя!')
+        if Subscribe.objects.filter(
+            author=data['author'], follower=data['follower']
+        ).exists():
+            raise serializers.ValidationError('Вы уже подписаны!')
+        return data
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FavoriteRecipe
+        fields = ('user', 'recipe')
 
     def validate(self, data):
         request = self.context.get('request')
         if not request or request.user.is_anonymous:
             return False
-        follower = data['follower']
-        if request.user == follower:
-            raise serializers.ValidationError(
-                'Вы не можете подписаться на себя!'
-            )
+        recipe = data['recipe']
+        if FavoriteRecipe.objects.filter(
+            user=request.user, recipe=recipe
+        ).exists():
+            raise serializers.ValidationError({
+                'status': 'Рецепт уже есть в избранном!'
+            })
         return data
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        return SubscribeRecipeSerializer(
+            instance.recipe, context=context).data
+
+
+class ShoppingCartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShoppingCart
+        fields = ('user', 'recipe')
+
+    def validate(self, data):
+        request = self.context.get('request')
+        if not request or request.user.is_anonymous:
+            return False
+        recipe = data['recipe']
+        if ShoppingCart.objects.filter(
+            user=request.user, recipe=recipe
+        ).exists():
+            raise serializers.ValidationError({
+                'status': 'Рецепт уже есть в списке покупок!'
+            })
+        return data
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        return SubscribeRecipeSerializer(
+            instance.recipe, context=context).data
