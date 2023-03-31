@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.http import HttpResponse
@@ -23,8 +24,7 @@ from .serializers import (IngredientSerializer, RecipesReadSerializer,
                           RecipesWriteSerializer, SubscribeRecipeSerializer,
                           SubscribeSerializer, TagSerializer, TokenSerializer,
                           UserCreateSerializer, UserListSerializer,
-                          UserPasswordSerializer, FavoriteSerializer,
-                          ShoppingCartSerializer)
+                          UserPasswordSerializer)
 
 User = get_user_model()
 
@@ -189,7 +189,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
     filterset_class = RecipeFilter
     permission_classes = (IsAuthenticatedOrReadOnly,)
 
-     def perform_create(self, serializer):
+    def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
     def get_serializer_class(self):

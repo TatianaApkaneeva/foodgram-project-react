@@ -1,5 +1,6 @@
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 from drf_base64.fields import Base64ImageField
@@ -247,8 +248,7 @@ class RecipesWriteSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         request = self.context.get('request')
         context = {'request': request}
-        return RecipesReadSerializer(instance,
-                                    context=context).data
+        return RecipesReadSerializer(instance, context=context).data
 
 
 class RecipesReadSerializer(serializers.ModelSerializer):
@@ -311,7 +311,8 @@ class SubscribeSerializer(serializers.ModelSerializer):
         recipes = obj.recipes.all()
         if limit:
             recipes = recipes[:int(limit)]
-        serializer = SubscribeRecipeSerializer(recipes, many=True, read_only=True)
+        serializer = SubscribeRecipeSerializer(
+            recipes, many=True, read_only=True)
         return serializer.data
 
     def get_recipes_count(self, obj):
