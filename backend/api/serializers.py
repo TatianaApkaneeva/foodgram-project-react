@@ -270,6 +270,18 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         model = Recipe
         fields = '__all__'
 
+    def get_is_favorited(self, object):
+        user = self.context.get('request').user
+        if user.is_anonymous:
+            return False
+        return object.favorite.filter(user=user).exists()
+
+    def get_is_in_shopping_cart(self, object):
+        user = self.context.get('request').user
+        if user.is_anonymous:
+            return False
+        return object.shopping_cart.filter(user=user).exists()
+
 
 class SubscribeRecipeSerializer(serializers.ModelSerializer):
 

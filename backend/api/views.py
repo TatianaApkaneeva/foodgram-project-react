@@ -1,14 +1,12 @@
-import io
-
+from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from django.db.models.aggregates import Count, Sum
+from django.db.models.aggregates import Count
 from django.db.models.expressions import Exists, OuterRef, Value
-from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics, ttfonts
 from reportlab.pdfgen import canvas
 from rest_framework import generics, status, viewsets
 from rest_framework.authtoken.models import Token
@@ -21,7 +19,7 @@ from rest_framework.response import Response
 
 from api.filters import IngredientFilter, RecipeFilter
 from api.permissions import IsAdminOrReadOnly
-from recipes.models import (FavoriteRecipe, Ingredient, Recipe, ShoppingCart,
+from recipes.models import (Ingredient, RecipeIngredient, Recipe,
                             Subscribe, Tag)
 from .serializers import (IngredientSerializer, RecipeReadSerializer,
                           RecipeWriteSerializer, SubscribeRecipeSerializer,
@@ -193,24 +191,13 @@ class RecipesViewSet(viewsets.ModelViewSet):
             return RecipeReadSerializer
         return RecipeWriteSerializer
 
-    def get_queryset(self):
-        return Recipe.objects.annotate(
-            is_favorited=Exists(
-                FavoriteRecipe.objects.filter(
-                    user=self.request.user, recipe=OuterRef('id'))),
-            is_in_shopping_cart=Exists(
-                ShoppingCart.objects.filter(
-                    user=self.request.user,
-                    recipe=OuterRef('id')))
-        ).select_related('author').prefetch_related(
-            'tags', 'ingredients', 'recipe',
-            'shopping_cart', 'favorite_recipe'
-        ) if self.request.user.is_authenticated else Recipe.objects.annotate(
-            is_in_shopping_cart=Value(False),
-            is_favorited=Value(False),
-        ).select_related('author').prefetch_related(
-            'tags', 'ingredients', 'recipe',
-            'shopping_cart', 'favorite_recipe')
+    @action(methods=['POST', 'DELETE'], detail=True)
+    def favorite(self, request, pk):
+        return self.action_post_delete(pk, RecipeReadSerializer)
+
+    @action(methods=['POST', 'DELETE'], detail=True)
+    def shopping_cart(self, request, pk):
+        return self.action_post_delete(pk, RecipeReadSerializer)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -220,44 +207,36 @@ class RecipesViewSet(viewsets.ModelViewSet):
         methods=['get'],
         permission_classes=(IsAuthenticated,))
     def download_shopping_cart(self, request):
-        """Качаем список с ингредиентами."""
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = (
+            "attachment; filename='shopping_cart.pdf'"
+        )
+        p = canvas.Canvas(response)
+        arial = ttfonts.TTFont('Arial', 'data/arial.ttf')
+        pdfmetrics.registerFont(arial)
+        p.setFont('Arial', 14)
 
-        buffer = io.BytesIO()
-        page = canvas.Canvas(buffer)
-        pdfmetrics.registerFont(TTFont('Vera', 'Vera.ttf', 'UTF-8'))
-        x_position, y_position = 50, 800
-        shopping_cart = (
-            request.user.shopping_cart.recipe.
-            values(
-                'ingredients__name',
-                'ingredients__measurement_unit'
-            ).annotate(amount=Sum('recipe__amount')).order_by())
-        page.setFont('Vera', 14)
-        if shopping_cart:
-            indent = 20
-            page.drawString(x_position, y_position, 'Cписок покупок:')
-            for index, recipe in enumerate(shopping_cart, start=1):
-                page.drawString(
-                    x_position, y_position - indent,
-                    f'{index}. {recipe["ingredients__name"]} - '
-                    f'{recipe["amount"]} '
-                    f'{recipe["ingredients__measurement_unit"]}.')
-                y_position -= 15
-                if y_position <= 50:
-                    page.showPage()
-                    y_position = 800
-            page.save()
-            buffer.seek(0)
-            return FileResponse(
-                buffer, as_attachment=True, filename=FILENAME)
-        page.setFont('Vera', 24)
-        page.drawString(
-            x_position,
-            y_position,
-            'Cписок покупок пуст!')
-        page.save()
-        buffer.seek(0)
-        return FileResponse(buffer, as_attachment=True, filename=FILENAME)
+        ingredients = RecipeIngredient.objects.filter(
+            recipe__shopping_cart__user=request.user).values_list(
+            'ingredient__name', 'amount', 'ingredient__measurement_unit')
+
+        ingr_list = {}
+        for name, amount, unit in ingredients:
+            if name not in ingr_list:
+                ingr_list[name] = {'amount': amount, 'unit': unit}
+            else:
+                ingr_list[name]['amount'] += amount
+        height = 700
+
+        p.drawString(100, 750, 'Список покупок')
+        for i, (name, data) in enumerate(ingr_list.items(), start=1):
+            p.drawString(
+                80, height,
+                f"{i}. {name} – {data['amount']} {data['unit']}")
+            height -= 25
+        p.showPage()
+        p.save()
+        return response
 
 
 class TagsViewSet(
