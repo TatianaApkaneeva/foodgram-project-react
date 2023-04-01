@@ -1,11 +1,12 @@
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
+from django.shortcuts import get_object_or_404
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 
 from recipes.models import (Ingredient, Recipe, RecipeIngredient,
-                            Tag, FavoriteRecipe, ShoppingCart)
+                            Tag, Subscribe)
 
 User = get_user_model()
 ERROR_MSG = 'Не удается войти в систему с текущими данными.'
@@ -94,7 +95,7 @@ class UserPasswordSerializer(serializers.Serializer):
                 username=user.email,
                 password=current_password):
             raise serializers.ValidationError(
-                ERR_MSG, code='authorization')
+                ERROR_MSG, code='authorization')
         return current_password
 
     def validate_new_password(self, new_password):
