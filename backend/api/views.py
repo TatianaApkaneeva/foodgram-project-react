@@ -224,9 +224,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
 
         buffer = io.BytesIO()
         page = canvas.Canvas(buffer)
-        pdfmetrics.registerFont(
-            TTFont('DejaVuSerif', 'DejaVuSerif.ttf', 'UTF-8'))
-        x_position, y_position = 210, 800
+        pdfmetrics.registerFont(TTFont('DejaVuSerif', 'DejaVuSerif.ttf', 'UTF-8'))
         shopping_list = (
             request.user.shopping_list.recipe.
             values(
@@ -234,28 +232,22 @@ class RecipesViewSet(viewsets.ModelViewSet):
                 'ingredients__measurement_unit'
             ).annotate(amount=Sum('recipe__amount')).order_by())
         page.setFont('DejaVuSerif', 24)
-        if shopping_list:
-            indent = 20
-            page.drawString(x_position, y_position, 'Cписок покупок:')
-            for index, recipe in enumerate(shopping_list, start=1):
-                page.drawString(
-                    x_position, y_position - indent,
-                    f'{index}. {recipe["ingredients__name"]} - '
-                    f'{recipe["amount"]} '
-                    f'{recipe["ingredients__measurement_unit"]}.')
-                y_position -= 30
-                if y_position <= 40:
-                    page.showPage()
-                    y_position = 760
-            page.save()
-            buffer.seek(0)
-            return FileResponse(
-                buffer, as_attachment=True, filename=FILENAME)
-        page.setFont('DejaVuSerif', 24)
-        page.drawString(
-            x_position,
-            y_position,
-            'Cписок покупок пуст!')
+        page.drawString(210, 800, 'Список покупок')
+        page.setFont('DejaVuSerif', 16)
+        height = 760
+        is_page_done = False
+        for index, recipe in enumerate(shopping_list, start=1):
+            is_page_done = False
+            page.drawString(60, height, text=(
+                f'{index}. {recipe["ingredients__name"]} - '
+                f'{recipe["amount"]} '
+                f'{recipe["ingredients__measurement_unit"]}.'))
+            height -= 30
+            if height <= 40:
+                page.showPage()
+                is_page_done = True
+        if not is_page_done:
+            page.showPage()
         page.save()
         buffer.seek(0)
         return FileResponse(buffer, as_attachment=True, filename=FILENAME)
