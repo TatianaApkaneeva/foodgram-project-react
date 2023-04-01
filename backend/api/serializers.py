@@ -1,12 +1,10 @@
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
-from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import ValidationError
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 
-from recipes.models import (Ingredient, Recipe, RecipeIngredient, Subscribe,
+from recipes.models import (Ingredient, Recipe, RecipeIngredient,
                             Tag, FavoriteRecipe, ShoppingCart)
 
 User = get_user_model()
@@ -172,7 +170,8 @@ class RecipeListSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request or request.user.is_anonymous:
             return False
-        return FavoriteRecipe.objects.filter(user=request.user, recipe=obj).exists()
+        return FavoriteRecipe.objects.filter(
+            user=request.user, recipe=obj).exists()
 
     def get_is_in_shopping_cart(self, obj):
         request = self.context.get('request')
@@ -312,7 +311,9 @@ class FavoriteSerializer(serializers.ModelSerializer):
         if not request or request.user.is_anonymous:
             return False
         recipe = data['recipe']
-        if FavoriteRecipe.objects.filter(user=request.user, recipe=recipe).exists():
+        if FavoriteRecipe.objects.filter(
+            user=request.user, recipe=recipe
+        ).exists():
             raise serializers.ValidationError({
                 'status': 'Рецепт уже есть в избранном!'
             })
