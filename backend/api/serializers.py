@@ -2,6 +2,7 @@ import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 
@@ -284,6 +285,34 @@ class RecipeReadSerializer(serializers.ModelSerializer):
             return False
         return ShoppingCart.objects.filter(recipe=obj,
                                            user=request.user).exists()
+
+
+class ShoppingCartSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    recipe = serializers.PrimaryKeyRelatedField(queryset=Recipe.objects.all())
+
+    class Meta:
+        model = ShoppingCart
+        fields = ('user', 'recipe')
+
+    def validate(self, data):
+        user = data['user']
+        recipe_id = data['recipe'].id
+        if ShoppingCart.objects.filter(user=user,
+                                       recipe__id=recipe_id).exists():
+            raise ValidationError(
+                'Рецепт уже добавлен в корзину!'
+            )
+        return data
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        return SubscribeRecipeSerializer(
+            instance.recipe,
+            context=context
+        ).data
+
 
 
 class SubscribeRecipeSerializer(serializers.ModelSerializer):
