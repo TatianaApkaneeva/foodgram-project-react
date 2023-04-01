@@ -12,6 +12,7 @@ from rest_framework import generics, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action, api_view
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import (SAFE_METHODS, AllowAny,
                                         IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
@@ -190,14 +191,29 @@ class RecipesViewSet(viewsets.ModelViewSet):
         if self.request.method in SAFE_METHODS:
             return RecipeReadSerializer
         return RecipeWriteSerializer
+    
+    def _favorite_shopping_post_delete(self, related_manager):
+        recipe = self.get_object()
+        if self.request.method == 'DELETE':
+            related_manager.get(recipe_id=recipe.id).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        if related_manager.filter(recipe=recipe).exists():
+            raise ValidationError('Рецепт уже в избранном')
+        related_manager.create(recipe=recipe)
+        serializer = RecipeReadSerializer(instance=recipe)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(methods=['POST', 'DELETE'], detail=True)
     def favorite(self, request, pk):
-        return self.action_post_delete(pk, RecipeReadSerializer)
+        return self._favorite_shopping_post_delete(
+            request.user.favorite
+        )
 
     @action(methods=['POST', 'DELETE'], detail=True)
     def shopping_cart(self, request, pk):
-        return self.action_post_delete(pk, RecipeReadSerializer)
+        return self._favorite_shopping_post_delete(
+            request.user.shopping_user
+        )
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)

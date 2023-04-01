@@ -6,7 +6,7 @@ from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 
 from recipes.models import (Ingredient, Recipe, RecipeIngredient, Subscribe,
-                            Tag)
+                            Tag, FavoriteRecipe, ShoppingCart)
 
 User = get_user_model()
 ERROR_MSG = 'Не удается войти в систему с текущими данными.'
@@ -269,18 +269,21 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = '__all__'
-
-    def get_is_favorited(self, object):
-        user = self.context.get('request').user
-        if user.is_anonymous:
+    
+    @staticmethod
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if not request or request.user.is_anonymous:
             return False
-        return object.favorite.filter(user=user).exists()
-
-    def get_is_in_shopping_cart(self, object):
-        user = self.context.get('request').user
-        if user.is_anonymous:
+        return FavoriteRecipe.objects.filter(recipe=obj,
+                                             user=request.user).exists()
+    
+    def get_is_in_shopping_cart(self, obj):
+        request = self.context.get('request')
+        if not request or request.user.is_anonymous:
             return False
-        return object.shopping_cart.filter(user=user).exists()
+        return ShoppingCart.objects.filter(recipe=obj,
+                                           user=request.user).exists()
 
 
 class SubscribeRecipeSerializer(serializers.ModelSerializer):
