@@ -10,7 +10,6 @@ from djoser.views import UserViewSet
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from django.conf import settings
 from rest_framework import generics, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -225,34 +224,34 @@ class RecipesViewSet(viewsets.ModelViewSet):
 
         buffer = io.BytesIO()
         page = canvas.Canvas(buffer)
-        font_path = settings.FONT_PATH
-        pdfmetrics.registerFont(TTFont('Vera', font_path, 'UTF-8'))
-        x_position, y_position = 50, 800
-        shopping_cart = (
-            request.user.shopping_cart.recipe.
+        pdfmetrics.registerFont(
+            TTFont('DejaVuSerif', 'DejaVuSerif.ttf', 'UTF-8'))
+        x_position, y_position = 210, 800
+        shopping_list = (
+            request.user.shopping_list.recipe.
             values(
                 'ingredients__name',
                 'ingredients__measurement_unit'
             ).annotate(amount=Sum('recipe__amount')).order_by())
-        page.setFont('Vera', 14)
-        if shopping_cart:
+        page.setFont('DejaVuSerif', 24)
+        if shopping_list:
             indent = 20
             page.drawString(x_position, y_position, 'Cписок покупок:')
-            for index, recipe in enumerate(shopping_cart, start=1):
+            for index, recipe in enumerate(shopping_list, start=1):
                 page.drawString(
                     x_position, y_position - indent,
                     f'{index}. {recipe["ingredients__name"]} - '
                     f'{recipe["amount"]} '
                     f'{recipe["ingredients__measurement_unit"]}.')
-                y_position -= 15
-                if y_position <= 50:
+                y_position -= 30
+                if y_position <= 40:
                     page.showPage()
-                    y_position = 800
+                    y_position = 760
             page.save()
             buffer.seek(0)
             return FileResponse(
                 buffer, as_attachment=True, filename=FILENAME)
-        page.setFont('Vera', 24)
+        page.setFont('DejaVuSerif', 24)
         page.drawString(
             x_position,
             y_position,
