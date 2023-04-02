@@ -65,6 +65,12 @@ class UserListSerializer(
             'email', 'id', 'username',
             'first_name', 'last_name', 'is_subscribed')
 
+    def get_is_subscribed(self, obj):
+        request_user = self.context.get('request').user.id
+        queryset = Subscribe.objects.filter(
+            author=obj.id, follower=request_user).exists()
+        return queryset
+
 
 class UserCreateSerializer(serializers.ModelSerializer):
 
@@ -306,3 +312,11 @@ class SubscribeSerializer(serializers.ModelSerializer):
         return SubscribeRecipeSerializer(
             recipes,
             many=True).data
+    
+    def validate(self, data):
+        user = data['user']
+        current_follow = data['following']
+        if user == current_follow:
+            raise serializers.ValidationError(
+                ['Подписка на себя невозможна'])
+        return data

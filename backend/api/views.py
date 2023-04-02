@@ -77,16 +77,9 @@ class AddAndDeleteSubscribe(
 
     def create(self, request, *args, **kwargs):
         instance = self.get_object()
-        if request.user.id == instance.id:
-            return Response(
-                {'errors': 'На самого себя не подписаться!'},
-                status=status.HTTP_400_BAD_REQUEST)
-        if request.user.follower.filter(author=instance).exists():
-            return Response(
-                {'errors': 'Уже подписан!'},
-                status=status.HTTP_400_BAD_REQUEST)
         subs = request.user.follower.create(author=instance)
         serializer = self.get_serializer(subs)
+        serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def perform_destroy(self, instance):
@@ -146,16 +139,6 @@ class UsersViewSet(UserViewSet):
 
     serializer_class = UserListSerializer
     permission_classes = (IsAuthenticated,)
-
-    def get_queryset(self):
-        return User.objects.annotate(
-            is_subscribed=Exists(
-                self.request.user.follower.filter(
-                    author=OuterRef('id'))
-            )).prefetch_related(
-                'follower', 'following'
-        ) if self.request.user.is_authenticated else User.objects.annotate(
-            is_subscribed=Value(False))
 
     def get_serializer_class(self):
         if self.request.method.lower() == 'post':
@@ -224,7 +207,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
 
         buffer = io.BytesIO()
         page = canvas.Canvas(buffer)
-        pdfmetrics.registerFont(TTFont('Vera', 'Vera.ttf'))
+        pdfmetrics.registerFont(TTFont('Vera', 'data/Vera.ttf'))
         x_position, y_position = 50, 800
         shopping_cart = (
             request.user.shopping_cart.recipe.
