@@ -207,8 +207,8 @@ class RecipesViewSet(viewsets.ModelViewSet):
 
         buffer = io.BytesIO()
         page = canvas.Canvas(buffer)
-        vera = ttfonts.TTFont('Vera', 'data/Vera.ttf')
-        pdfmetrics.registerFont(vera)
+        arial = ttfonts.TTFont('Arial', 'data/arial.ttf')
+        pdfmetrics.registerFont(arial)
         x_position, y_position = 50, 800
         shopping_cart = (
             request.user.shopping_cart.recipe.
