@@ -30,19 +30,6 @@ User = get_user_model()
 FILENAME = 'shoppingcart.pdf'
 
 
-class GetObjectMixin:
-    """Миксина для удаления/добавления рецептов избранных/корзины."""
-
-    serializer_class = SubscribeRecipeSerializer
-    permission_classes = (AllowAny,)
-
-    def get_object(self):
-        recipe_id = self.kwargs['recipe_id']
-        recipe = get_object_or_404(Recipe, id=recipe_id)
-        self.check_object_permissions(self.request, recipe)
-        return recipe
-
-
 class AuthToken(ObtainAuthToken):
     """Авторизация пользователя."""
 
@@ -120,7 +107,7 @@ class UsersViewSet(mixins.CreateModelMixin,
                             status=status.HTTP_204_NO_CONTENT)
 
 
-class RecipesViewSet(viewsets.ModelViewSet, GetObjectMixin):
+class RecipesViewSet(viewsets.ModelViewSet):
     """Рецепты."""
 
     queryset = Recipe.objects.all()
@@ -182,9 +169,6 @@ class RecipesViewSet(viewsets.ModelViewSet, GetObjectMixin):
                 status=status.HTTP_204_NO_CONTENT
             )
 
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
-
     @action(
         detail=False,
         methods=['get'],
@@ -230,18 +214,24 @@ class RecipesViewSet(viewsets.ModelViewSet, GetObjectMixin):
         return FileResponse(buffer, as_attachment=True, filename=FILENAME)
 
 
-class TagsViewSet(viewsets.ModelViewSet):
+class TagsViewSet(mixins.ListModelMixin,
+                  mixins.RetrieveModelMixin,
+                  viewsets.GenericViewSet):
     """Список тэгов."""
 
+    permission_classes = (AllowAny, )
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     pagination_class = None
 
 
-class IngredientsViewSet(viewsets.ModelViewSet):
+class IngredientsViewSet(mixins.ListModelMixin,
+                         mixins.RetrieveModelMixin,
+                         viewsets.GenericViewSet):
     """Список ингредиентов."""
 
     queryset = Ingredient.objects.all()
+    permission_classes = (AllowAny, )
     serializer_class = IngredientSerializer
     filterset_class = IngredientFilter
     pagination_class = None
