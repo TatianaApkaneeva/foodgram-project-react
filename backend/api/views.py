@@ -8,7 +8,7 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics, ttfonts
 from reportlab.pdfgen import canvas
 from rest_framework import generics, status, viewsets
 from rest_framework.authtoken.models import Token
@@ -207,7 +207,8 @@ class RecipesViewSet(viewsets.ModelViewSet):
 
         buffer = io.BytesIO()
         page = canvas.Canvas(buffer)
-        pdfmetrics.registerFont(TTFont('Vera', 'data/Vera.ttf'))
+        vera = ttfonts.TTFont('Vera', 'data/Vera.ttf')
+        pdfmetrics.registerFont(vera)
         x_position, y_position = 50, 800
         shopping_cart = (
             request.user.shopping_cart.recipe.
