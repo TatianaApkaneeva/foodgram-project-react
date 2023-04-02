@@ -17,6 +17,7 @@ from rest_framework.permissions import (SAFE_METHODS, AllowAny,
 from rest_framework.response import Response
 
 from .pagination import LimitPageNumberPagination
+from api.permissions import IsAdminOrReadOnly
 from api.filters import IngredientFilter, RecipeFilter
 from recipes.models import (FavoriteRecipe, Ingredient, Recipe, ShoppingCart,
                             Subscribe, Tag)
@@ -28,6 +29,98 @@ from .serializers import (IngredientSerializer, RecipeReadSerializer,
 
 User = get_user_model()
 FILENAME = 'shoppingcart.pdf'
+
+
+class GetObjectMixin:
+    """Миксина для удаления/добавления рецептов избранных/корзины."""
+
+    serializer_class = SubscribeRecipeSerializer
+    permission_classes = (AllowAny,)
+
+    def get_object(self):
+        recipe_id = self.kwargs['recipe_id']
+        recipe = get_object_or_404(Recipe, id=recipe_id)
+        self.check_object_permissions(self.request, recipe)
+        return recipe
+
+
+class PermissionAndPaginationMixin:
+    """Миксина для списка тегов и ингридиентов."""
+
+    permission_classes = (IsAdminOrReadOnly,)
+    pagination_class = None
+
+
+class AddAndDeleteSubscribe(
+        generics.RetrieveDestroyAPIView,
+        generics.ListCreateAPIView):
+    """Подписка и отписка от пользователя."""
+
+    serializer_class = SubscribeSerializer
+
+    def get_queryset(self):
+        return self.request.user.follower.select_related(
+            'following'
+        ).prefetch_related(
+            'following__recipe'
+        ).annotate(
+            recipes_count=Count('following__recipe'),
+            is_subscribed=Value(True), )
+
+    def get_object(self):
+        user_id = self.kwargs['user_id']
+        user = get_object_or_404(User, id=user_id)
+        self.check_object_permissions(self.request, user)
+        return user
+
+    def create(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if request.user.id == instance.id:
+            return Response(
+                {'errors': 'На самого себя не подписаться!'},
+                status=status.HTTP_400_BAD_REQUEST)
+        if request.user.follower.filter(author=instance).exists():
+            return Response(
+                {'errors': 'Уже подписан!'},
+                status=status.HTTP_400_BAD_REQUEST)
+        subs = request.user.follower.create(author=instance)
+        serializer = self.get_serializer(subs)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        self.request.user.follower.filter(author=instance).delete()
+
+
+class AddDeleteFavoriteRecipe(
+        GetObjectMixin,
+        generics.RetrieveDestroyAPIView,
+        generics.ListCreateAPIView):
+    """Добавление и удаление рецепта в/из избранных."""
+
+    def create(self, request, *args, **kwargs):
+        instance = self.get_object()
+        request.user.favorite_recipe.recipe.add(instance)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        self.request.user.favorite_recipe.recipe.remove(instance)
+
+
+class AddDeleteShoppingCart(
+        GetObjectMixin,
+        generics.RetrieveDestroyAPIView,
+        generics.ListCreateAPIView):
+    """Добавление и удаление рецепта в/из корзины."""
+
+    def create(self, request, *args, **kwargs):
+        instance = self.get_object()
+        request.user.shopping_cart.recipe.add(instance)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        self.request.user.shopping_cart.recipe.remove(instance)
 
 
 class AuthToken(ObtainAuthToken):

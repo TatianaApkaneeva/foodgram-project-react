@@ -1,8 +1,9 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from api.views import (AuthToken, IngredientsViewSet,
-                       RecipesViewSet, TagsViewSet, UsersViewSet, set_password)
+from api.views import (AuthToken, IngredientsViewSet, AddDeleteFavoriteRecipe,
+                       AddDeleteShoppingCart, RecipesViewSet, TagsViewSet,
+                       UsersViewSet, set_password)
 
 app_name = 'api'
 
@@ -22,6 +23,14 @@ urlpatterns = [
           'users/set_password/',
           set_password,
           name='set_password'),
+     path(
+          'recipes/<int:recipe_id>/favorite/',
+          AddDeleteFavoriteRecipe.as_view(),
+          name='favorite_recipe'),
+     path(
+          'recipes/<int:recipe_id>/shopping_cart/',
+          AddDeleteShoppingCart.as_view(),
+          name='shopping_cart'),
      path('', include(router.urls)),
      path('', include('djoser.urls')),
      path('auth/', include('djoser.urls.authtoken')),
