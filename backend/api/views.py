@@ -61,47 +61,33 @@ class PermissionAndPaginationMixin:
 class SubscribeView(APIView):
     permission_classes = [IsAuthenticated, ]
     
-    @action(
-        methods=['post'],
-        detail=False,
-        permission_classes=[IsAuthenticated],)
-    def get(self, request, id):
-        data = {'user': request.user.id, 'author': id}
-        serializer = SubscribeSerializer(
-            data=data, context={'request': request}
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-    @action(
-        methods=['post', 'delete'],
-        detail=True,
-        permission_classes=[IsAuthenticated],)
-    def delete(self, request, id):
-        user = request.user
-        following = get_object_or_404(User, id=id)
-        follow = get_object_or_404(
-            Subscribe, user=user, following=following
-        )
-        follow.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    @action(detail=True, methods=['post', 'delete'])
+    def subscribe(self, request, **kwargs):
+        author = get_object_or_404(User, id=kwargs['pk'])
+
+        if request.method == 'POST':
+            serializer = SubscribeSerializer(
+                author, data=request.data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            Subscribe.objects.create(user=request.user, author=author)
+            return Response(serializer.data,
+                            status=status.HTTP_201_CREATED)
+
+        if request.method == 'DELETE':
+            get_object_or_404(Subscribe, user=request.user,
+                              author=author).delete()
+            return Response({'detail': 'Успешная отписка'},
+                            status=status.HTTP_204_NO_CONTENT)
 
 
 class SubscribeListView(ListAPIView):
     pagination_class = LimitPageNumberPagination
     permission_classes = [IsAuthenticated, ]
     
-    @action(detail=False, methods=['get'],)
-    def get(self, request):
-        user = request.user
-        queryset = User.objects.filter(following__user=user)
-        page = self.paginate_queryset(queryset)
-        serializer = SubscribeListSerializer(
-            page, many=True,
-            context={'request': request}
-        )
-        return self.get_paginated_response(serializer.data)
+    def get_queryset(self):
+        user = self.request.user
+        new_queryset = User.objects.filter(following__user=user)
+        return new_queryset
 
 
 class AddDeleteFavoriteRecipe(
