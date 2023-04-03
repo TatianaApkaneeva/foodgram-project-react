@@ -2,10 +2,9 @@ import io
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from django.db.models.aggregates import Sum
+from django.db.models.aggregates import Sum, Count
 from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import FileResponse
-from rest_framework.generics import ListAPIView
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from reportlab.pdfbase import pdfmetrics
@@ -19,11 +18,9 @@ from rest_framework.permissions import (SAFE_METHODS, AllowAny,
                                         IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from api.filters import IngredientFilter, RecipeFilter
 from api.permissions import IsAdminOrReadOnly
-from api.pagination import LimitPageNumberPagination
 from recipes.models import (FavoriteRecipe, Ingredient, Recipe, ShoppingCart,
                             Subscribe, Tag)
 from .serializers import (IngredientSerializer, RecipeReadSerializer,
@@ -58,36 +55,38 @@ class PermissionAndPaginationMixin:
     pagination_class = None
 
 
-class SubscribeView(APIView):
-    permission_classes = [IsAuthenticated, ]
-    
-    @action(detail=True, methods=['post', 'delete'])
-    def subscribe(self, request, **kwargs):
-        author = get_object_or_404(User, id=kwargs['pk'])
+class AddAndDeleteSubscribe(
+        generics.RetrieveDestroyAPIView,
+        generics.ListCreateAPIView):
+    """Подписка и отписка от пользователя."""
 
-        if request.method == 'POST':
-            serializer = SubscribeSerializer(
-                author, data=request.data, context={"request": request})
-            serializer.is_valid(raise_exception=True)
-            Subscribe.objects.create(user=request.user, author=author)
-            return Response(serializer.data,
-                            status=status.HTTP_201_CREATED)
+    serializer_class = SubscribeListSerializer
 
-        if request.method == 'DELETE':
-            get_object_or_404(Subscribe, user=request.user,
-                              author=author).delete()
-            return Response({'detail': 'Успешная отписка'},
-                            status=status.HTTP_204_NO_CONTENT)
-
-
-class SubscribeListView(ListAPIView):
-    pagination_class = LimitPageNumberPagination
-    permission_classes = [IsAuthenticated, ]
-    
     def get_queryset(self):
-        user = self.request.user
-        new_queryset = User.objects.filter(following__user=user)
-        return new_queryset
+        return self.request.user.follower.select_related(
+            'following'
+        ).prefetch_related(
+            'following__recipe'
+        ).annotate(
+            recipes_count=Count('following__recipe'),
+            is_subscribed=Value(True),
+        )
+
+    def get_object(self):
+        user_id = self.kwargs['user_id']
+        user = get_object_or_404(User, id=user_id)
+        self.check_object_permissions(self.request, user)
+        return user
+
+    def create(self, request, *args, **kwargs):
+        instance = self.get_object()
+        subs = request.user.follower.create(author=instance)
+        serializer = self.get_serializer(subs)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        self.request.user.follower.filter(author=instance).delete()
 
 
 class AddDeleteFavoriteRecipe(
