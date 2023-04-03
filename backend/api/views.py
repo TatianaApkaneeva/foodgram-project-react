@@ -60,27 +60,24 @@ class PermissionAndPaginationMixin:
 
 class SubscribeView(APIView):
     permission_classes = [IsAuthenticated, ]
-
-    def post(self, request, id):
+    
+    def get(self, request, id):
+        data = {'user': request.user.id, 'following': id}
         serializer = SubscribeSerializer(
-            data={'user': request.user.id, 'author': id},
-            context={'request': request})
+            data=data, context={'request': request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def delete(self, request, id):
         user = request.user
-        author = get_object_or_404(User, id=id)
-        try:
-            subscription = Subscribe.objects.get(user=user, author=author)
-            subscription.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Subscribe.DoesNotExist:
-            return Response(
-                'Вы уже отписались от этого автора',
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        following = get_object_or_404(User, id=id)
+        follow = get_object_or_404(
+            Subscribe, user=user, following=following
+        )
+        follow.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class SubscribeListView(ListAPIView):
@@ -159,6 +156,16 @@ class UsersViewSet(UserViewSet):
     def perform_create(self, serializer):
         password = make_password(self.request.data['password'])
         serializer.save(password=password)
+    
+    @action(detail=True, permission_classes=[IsAuthenticated])
+    def subscribe(self, request, id=None):
+        user = request.user
+        author = get_object_or_404(User, id=id)
+        follow = Subscribe.objects.create(user=user, author=author)
+        serializer = SubscribeSerializer(
+            follow, context={'request': request}
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
         detail=False,
