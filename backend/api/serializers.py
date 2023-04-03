@@ -8,7 +8,7 @@ from rest_framework import serializers
 from recipes.models import Ingredient, Recipe, RecipeIngredient, Subscribe, Tag
 
 User = get_user_model()
-ERR_MSG = 'Не удается войти в систему с предоставленными учетными данными.'
+ERROR_MSG = 'Не удается войти в систему с предоставленными учетными данными.'
 
 
 class TokenSerializer(serializers.Serializer):
@@ -34,9 +34,11 @@ class TokenSerializer(serializers.Serializer):
                 password=password)
             if not user:
                 raise serializers.ValidationError(
-                    ERR_MSG,
+                    ERROR_MSG,
                     code='authorization')
-        else:
+        if not authenticate(
+            request=self.context.get('request'), email=email, password=password
+        ):
             msg = 'Необходимо указать "адрес электронной почты" и "пароль".'
             raise serializers.ValidationError(
                 msg,
@@ -97,7 +99,7 @@ class UserPasswordSerializer(serializers.Serializer):
                 username=user.email,
                 password=current_password):
             raise serializers.ValidationError(
-                ERR_MSG, code='authorization')
+                ERROR_MSG, code='authorization')
         return current_password
 
     def validate_new_password(self, new_password):
