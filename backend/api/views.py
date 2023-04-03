@@ -85,11 +85,12 @@ class SubscribeListView(ListAPIView):
     permission_classes = [IsAuthenticated, ]
 
     def get(self, request):
+        user = request.user
+        queryset = User.objects.filter(following__user=user)
+        page = self.paginate_queryset(queryset)
         serializer = SubscribeListSerializer(
-            self.paginate_queryset(
-                User.objects.filter(subscribing__user=request.user)),
-            context={'request': request},
-            many=True
+            page, many=True,
+            context={'request': request}
         )
         return self.get_paginated_response(serializer.data)
 
