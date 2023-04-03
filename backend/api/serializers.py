@@ -4,6 +4,7 @@ from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 from recipes.models import Ingredient, Recipe, RecipeIngredient, Subscribe, Tag
 
@@ -36,9 +37,7 @@ class TokenSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     ERROR_MSG,
                     code='authorization')
-        if not authenticate(
-            request=self.context.get('request'), email=email, password=password
-        ):
+        else:
             msg = 'Необходимо указать "адрес электронной почты" и "пароль".'
             raise serializers.ValidationError(
                 msg,
@@ -283,6 +282,39 @@ class SubscribeRecipeSerializer(serializers.ModelSerializer):
 
 
 class SubscribeSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all()
+    )
+    author = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all()
+    )
+
+    class Meta:
+        model = Subscribe
+        fields = ('user', 'author')
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Subscribe.objects.all(),
+                fields=('user', 'author'),
+                message='Вы уже подписаны на этого автора.'
+            )
+        ]
+
+    def to_representation(self, obj):
+        return SubscribeListSerializer(
+            obj.author,
+            context={'request': self.context.get('request')}
+        ).data
+
+    def validate(self, data):
+        user = data.get('user')
+        subscribing = data.get('subscribing')
+        if user == subscribing:
+            raise serializers.ValidationError('На себя подписаться нельзя')
+        return data
+
+
+class SubscribeListSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(
         source='author.id')
     email = serializers.EmailField(
@@ -304,7 +336,13 @@ class SubscribeSerializer(serializers.ModelSerializer):
         fields = (
             'email', 'id', 'username', 'first_name', 'last_name',
             'is_subscribed', 'recipes', 'recipes_count',)
-
+    
+    def get_is_subscribed(self, obj):
+        request = self.context.get('request')
+        if not request or request.user.is_anonymous:
+            return 0
+        return Subscribe.objects.filter(user=request.user, author=obj).exists()
+    
     def get_recipes(self, obj):
         request = self.context.get('request')
         limit = request.GET.get('recipes_limit')
@@ -315,10 +353,5 @@ class SubscribeSerializer(serializers.ModelSerializer):
             recipes,
             many=True).data
     
-    def validate(self, data):
-        user = data['user']
-        current_follow = data['following']
-        if user == current_follow:
-            raise serializers.ValidationError(
-                ['Подписка на себя невозможна'])
-        return data
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()
