@@ -62,11 +62,11 @@ class SubscribeView(APIView):
     permission_classes = [IsAuthenticated, ]
     
     @action(
-        methods=['get'],
+        methods=['post'],
         detail=False,
         permission_classes=[IsAuthenticated],)
     def get(self, request, id):
-        data = {'user': request.user.id, 'following': id}
+        data = {'user': request.user.id, 'author': id}
         serializer = SubscribeSerializer(
             data=data, context={'request': request}
         )
@@ -91,7 +91,8 @@ class SubscribeView(APIView):
 class SubscribeListView(ListAPIView):
     pagination_class = LimitPageNumberPagination
     permission_classes = [IsAuthenticated, ]
-
+    
+    @action(detail=False, methods=['get'],)
     def get(self, request):
         user = request.user
         queryset = User.objects.filter(following__user=user)
@@ -168,6 +169,7 @@ class UsersViewSet(UserViewSet):
     
     @action(
         detail=False,
+        methods=['get'],
         permission_classes=(IsAuthenticated,))
     def subscriptions(self, request):
         """Получить на кого пользователь подписан."""
