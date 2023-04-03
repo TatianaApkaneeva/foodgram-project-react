@@ -340,8 +340,10 @@ class SubscribeListSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
         if not request or request.user.is_anonymous:
-            return 0
-        return Subscribe.objects.filter(user=request.user, author=obj).exists()
+            return False
+        return Subscribe.objects.filter(
+            user=request.user, following=obj
+        ).exists()
     
     def get_recipes(self, obj):
         request = self.context.get('request')
