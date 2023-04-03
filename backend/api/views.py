@@ -61,6 +61,10 @@ class PermissionAndPaginationMixin:
 class SubscribeView(APIView):
     permission_classes = [IsAuthenticated, ]
     
+    @action(
+        methods=['get'],
+        detail=False,
+        permission_classes=[IsAuthenticated],)
     def get(self, request, id):
         data = {'user': request.user.id, 'following': id}
         serializer = SubscribeSerializer(
@@ -69,7 +73,11 @@ class SubscribeView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+    
+    @action(
+        methods=['post', 'delete'],
+        detail=True,
+        permission_classes=[IsAuthenticated],)
     def delete(self, request, id):
         user = request.user
         following = get_object_or_404(User, id=id)
