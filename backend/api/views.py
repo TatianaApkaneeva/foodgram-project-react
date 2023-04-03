@@ -158,17 +158,19 @@ class UsersViewSet(UserViewSet):
         password = make_password(self.request.data['password'])
         serializer.save(password=password)
     
-    #@action(detail=False, permission_classes=(IsAuthenticated,))
-    #def subscriptions(self, request):
-    #  """Получить на кого пользователь подписан."""
+    @action(
+        detail=False,
+        permission_classes=(IsAuthenticated,))
+    def subscriptions(self, request):
+        """Получить на кого пользователь подписан."""
 
-    # user = request.user
-    #    queryset = Subscribe.objects.filter(user=user)
-    #    pages = self.paginate_queryset(queryset)
-    #    serializer = SubscribeListSerializer(
-    #       pages, many=True,
-    #       context={'request': request})
-    #    return self.get_paginated_response(serializer.data)
+        user = request.user
+        queryset = Subscribe.objects.filter(user=user)
+        pages = self.paginate_queryset(queryset)
+        serializer = SubscribeSerializer(
+            pages, many=True,
+            context={'request': request})
+        return self.get_paginated_response(serializer.data)
 
 
 class RecipesViewSet(viewsets.ModelViewSet):
