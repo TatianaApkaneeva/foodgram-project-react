@@ -282,20 +282,14 @@ class SubscribeRecipeSerializer(serializers.ModelSerializer):
 
 
 class SubscribeSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all()
-    )
-    author = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all()
-    )
 
     class Meta:
         model = Subscribe
-        fields = ('user', 'author')
+        fields = ('user', 'following')
         validators = [
             UniqueTogetherValidator(
                 queryset=Subscribe.objects.all(),
-                fields=('user', 'author'),
+                fields=('user', 'following'),
                 message='Вы уже подписаны на этого автора.'
             )
         ]
@@ -307,10 +301,14 @@ class SubscribeSerializer(serializers.ModelSerializer):
         ).data
 
     def validate(self, data):
-        user = data.get('user')
-        subscribing = data.get('subscribing')
-        if user == subscribing:
-            raise serializers.ValidationError('На себя подписаться нельзя')
+        request = self.context.get('request')
+        if not request or request.user.is_anonymous:
+            return False
+        following = data['following']
+        if request.user == following:
+            raise serializers.ValidationError(
+                'Вы не можете подписаться на себя!'
+            )
         return data
 
 

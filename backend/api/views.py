@@ -5,6 +5,7 @@ from django.contrib.auth.hashers import make_password
 from django.db.models.aggregates import Sum
 from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import FileResponse
+from rest_framework.generics import ListAPIView
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from reportlab.pdfbase import pdfmetrics
@@ -82,7 +83,7 @@ class SubscribeView(APIView):
             )
 
 
-class SubscribeListView(generics.ListCreateAPIView):
+class SubscribeListView(ListAPIView):
     pagination_class = LimitPageNumberPagination
     permission_classes = [IsAuthenticated, ]
 
