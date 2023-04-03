@@ -241,7 +241,6 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
                                     context=self.context).data
 
 
-
 class RecipeReadSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
     tags = TagSerializer(
@@ -320,7 +319,7 @@ class SubscribeListSerializer(serializers.ModelSerializer):
         read_only=True)
 
     class Meta:
-        model = Subscribe
+        model = User
         fields = (
             'email', 'id', 'username', 'first_name', 'last_name',
             'is_subscribed', 'recipes', 'recipes_count',)
