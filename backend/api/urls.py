@@ -1,8 +1,8 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from api.views import (AddDeleteFavoriteRecipe,SubscribeListView,
-                       SubscribeView, AddDeleteShoppingCart,
+from api.views import (AddDeleteFavoriteRecipe,AddAndDeleteSubscribe,
+                       AddDeleteShoppingCart,
                        AuthToken, IngredientsViewSet,
                        RecipesViewSet, TagsViewSet, UsersViewSet, set_password)
 
@@ -26,11 +26,11 @@ urlpatterns = [
           name='set_password'),
      path(
           'users/<int:user_id>/subscriptions/',
-          SubscribeListView.as_view(),
+          AddAndDeleteSubscribe.as_view(),
           name='subscribe'),
      path(
           'users/<int:user_id>/subscribe/',
-          SubscribeView.as_view(),
+          UsersViewSet.as_view(),
           name='subscribe'),
      path(
           'recipes/<int:recipe_id>/favorite/',
