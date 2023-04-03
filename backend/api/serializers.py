@@ -67,10 +67,12 @@ class UserListSerializer(
             'first_name', 'last_name', 'is_subscribed')
 
     def get_is_subscribed(self, obj):
-        request_user = self.context.get('request').user.id
-        queryset = Subscribe.objects.filter(
-            author=obj.id, follower=request_user).exists()
-        return queryset
+        request = self.context.get('request')
+        if not request or request.user.is_anonymous:
+            return False
+        return Subscribe.objects.filter(
+            user=request.user, following=obj
+        ).exists()
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
