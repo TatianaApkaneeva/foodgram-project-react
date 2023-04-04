@@ -292,13 +292,6 @@ class SubscribeSerializer(serializers.ModelSerializer):
         fields = (
             'email', 'id', 'username', 'first_name', 'last_name',
             'is_subscribed', 'recipes', 'recipes_count',)
-        validators = [
-            UniqueTogetherValidator(
-                queryset=Subscribe.objects.all(),
-                fields=('user', 'author'),
-                message=('Вы уже подписаны на данного пользователя!')
-            )
-        ]
     
     def validate(self, data):
         if data['user'] == data['author']:
