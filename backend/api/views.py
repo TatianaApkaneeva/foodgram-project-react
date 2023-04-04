@@ -82,7 +82,6 @@ class AddAndDeleteSubscribe(
         instance = self.get_object()
         subs = request.user.follower.create(author=instance)
         serializer = self.get_serializer(subs)
-        serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def perform_destroy(self, instance):
