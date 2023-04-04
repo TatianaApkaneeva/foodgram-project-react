@@ -60,7 +60,7 @@ class AddAndDeleteSubscribe(
         generics.ListCreateAPIView):
     """Подписка и отписка от пользователя."""
 
-    serializer_class = SubscribeListSerializer
+    serializer_class = SubscribeSerializer
 
     def get_queryset(self):
         return self.request.user.follower.select_related(
@@ -162,7 +162,7 @@ class UsersViewSet(UserViewSet):
         user = request.user
         queryset = Subscribe.objects.filter(user=user)
         pages = self.paginate_queryset(queryset)
-        serializer = SubscribeSerializer(
+        serializer = SubscribeListSerializer(
             pages, many=True,
             context={'request': request})
         return self.get_paginated_response(serializer.data)
