@@ -64,6 +64,19 @@ class UserListSerializer(
         fields = (
             'email', 'id', 'username',
             'first_name', 'last_name', 'is_subscribed')
+    
+    def get_recipes(self, obj):
+        request = self.context.get('request')
+        limit = request.GET.get('recipes_limit')
+        recipes = (
+            obj.author.recipe.all()[:int(limit)] if limit
+            else obj.author.recipe.all())
+        return SubscribeRecipeSerializer(
+            recipes,
+            many=True).data
+    
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -301,15 +314,11 @@ class SubscribeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Вы уже подписаны!')
         return data
     
-    def get_recipes(self, obj):
-        request = self.context.get('request')
-        limit = request.GET.get('recipes_limit')
-        recipes = (
-            obj.author.recipe.all()[:int(limit)] if limit
-            else obj.author.recipe.all())
-        return SubscribeRecipeSerializer(
-            recipes,
-            many=True).data
+    def get_is_subscribed(self, obj):
+        user = self.context['request'].user
+        if not user.is_authenticated:
+            return False
+        return user.follower.filter(author=obj).exists()
     
     def get_recipes_count(self, obj):
         return obj.recipes.count()
