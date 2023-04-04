@@ -65,6 +65,12 @@ class UserListSerializer(
         fields = (
             'email', 'id', 'username',
             'first_name', 'last_name', 'is_subscribed')
+    
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        context = {'request': request}
+        return SubscribeSerializer(
+            instance.author, context=context).data
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -301,14 +307,12 @@ class SubscribeSerializer(serializers.ModelSerializer):
         ]
     
     def validate(self, data):
-        request = self.context.get('request')
-        if not request or request.user.is_anonymous:
-            return False
-        following = data['author']
-        if request.user == following:
-            raise serializers.ValidationError(
-                'Вы не можете подписаться на себя!'
-            )
+        if data['user'] == data['author']:
+            raise serializers.ValidationError('Нельзя подписаться на себя!')
+        if Subscribe.objects.filter(
+            user=data['user'], author=data['author']
+        ).exists():
+            raise serializers.ValidationError('Вы уже подписаны!')
         return data
     
     def get_recipes(self, obj):
