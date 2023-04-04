@@ -65,12 +65,6 @@ class UserListSerializer(
         fields = (
             'email', 'id', 'username',
             'first_name', 'last_name', 'is_subscribed')
-    
-    def to_representation(self, instance):
-        request = self.context.get('request')
-        context = {'request': request}
-        return SubscribeSerializer(
-            instance.author, context=context).data
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
