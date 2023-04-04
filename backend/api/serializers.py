@@ -282,7 +282,8 @@ class SubscribeRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class SubscribeSerializer(serializers.ModelSerializer):
+class SubscribeSerializer(serializers.ModelSerializer,
+                          GetIsSubscribedMixin):
     id = serializers.IntegerField(
         source='author.id')
     email = serializers.EmailField(
@@ -313,12 +314,6 @@ class SubscribeSerializer(serializers.ModelSerializer):
         ).exists():
             raise serializers.ValidationError('Вы уже подписаны!')
         return data
-    
-    def get_is_subscribed(self, obj):
-        user = self.context['request'].user
-        if not user.is_authenticated:
-            return False
-        return user.follower.filter(author=obj).exists()
     
     def get_recipes_count(self, obj):
         return obj.recipes.count()
