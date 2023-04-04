@@ -25,7 +25,7 @@ from recipes.models import (FavoriteRecipe, Ingredient, Recipe, ShoppingCart,
                             Subscribe, Tag)
 from .serializers import (IngredientSerializer, RecipeReadSerializer,
                           RecipeWriteSerializer, SubscribeRecipeSerializer,
-                          SubscribeListSerializer, TagSerializer,
+                          RecipeUserSerializer, TagSerializer,
                           TokenSerializer, UserCreateSerializer,
                           UserListSerializer, UserPasswordSerializer,
                           SubscribeSerializer)
@@ -162,7 +162,7 @@ class UsersViewSet(UserViewSet):
         user = request.user
         queryset = Subscribe.objects.filter(user=user)
         pages = self.paginate_queryset(queryset)
-        serializer = SubscribeListSerializer(
+        serializer = RecipeUserSerializer(
             pages, many=True,
             context={'request': request})
         return self.get_paginated_response(serializer.data)

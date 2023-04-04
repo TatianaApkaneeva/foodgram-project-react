@@ -270,32 +270,6 @@ class SubscribeRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class SubscribeListSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Subscribe
-        fields = ('user', 'following')
-
-    def to_representation(self, obj):
-        return SubscribeSerializer(
-            obj.author,
-            context={'request': self.context.get('request')}
-        ).data
-    
-    def get_recipes(self, obj):
-        request = self.context.get('request')
-        limit = request.GET.get('recipes_limit')
-        recipes = (
-            obj.author.recipe.all()[:int(limit)] if limit
-            else obj.author.recipe.all())
-        return SubscribeRecipeSerializer(
-            recipes,
-            many=True).data
-    
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()
-
-
 class SubscribeSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(
         source='author.id')
@@ -314,14 +288,14 @@ class SubscribeSerializer(serializers.ModelSerializer):
         read_only=True)
 
     class Meta:
-        model = User
+        model = Subscribe
         fields = (
             'email', 'id', 'username', 'first_name', 'last_name',
             'is_subscribed', 'recipes', 'recipes_count',)
         validators = [
             UniqueTogetherValidator(
                 queryset=Subscribe.objects.all(),
-                fields=('user', 'following'),
+                fields=('user', 'author'),
                 message=('Вы уже подписаны на данного пользователя!')
             )
         ]
@@ -330,7 +304,7 @@ class SubscribeSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request or request.user.is_anonymous:
             return False
-        following = data['following']
+        following = data['author']
         if request.user == following:
             raise serializers.ValidationError(
                 'Вы не можете подписаться на себя!'
