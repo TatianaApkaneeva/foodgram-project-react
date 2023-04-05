@@ -29,6 +29,10 @@ urlpatterns = [
           AddAndDeleteSubscribe.as_view(),
           name='subscribe'),
      path(
+          'users/<int:user_id>/subscriptions/',
+          AddAndDeleteSubscribe.as_view(),
+          name='subscribe'),
+     path(
           'recipes/<int:recipe_id>/favorite/',
           AddDeleteFavoriteRecipe.as_view(),
           name='favorite_recipe'),
