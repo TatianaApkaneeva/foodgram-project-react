@@ -25,7 +25,7 @@ urlpatterns = [
           set_password,
           name='set_password'),
      path(
-          'users/<int:user_id>/subscriptions/',
+          'users/<int:user_id>/subscribe/',
           AddAndDeleteSubscribe.as_view(),
           name='subscribe'),
      path(
