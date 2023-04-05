@@ -2,7 +2,7 @@ import io
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from django.db.models.aggregates import Sum, Count
+from django.db.models.aggregates import Sum
 from django.db.models.expressions import Exists, OuterRef, Value
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
@@ -25,7 +25,7 @@ from recipes.models import (FavoriteRecipe, Ingredient, Recipe, ShoppingCart,
                             Subscribe, Tag)
 from .serializers import (IngredientSerializer, RecipeReadSerializer,
                           RecipeWriteSerializer, SubscribeRecipeSerializer,
-                          TagSerializer,
+                          TagSerializer, SubscribeSerializer,
                           TokenSerializer, UserCreateSerializer,
                           UserListSerializer, UserPasswordSerializer,
                           SubscribeSerializer)
@@ -103,63 +103,15 @@ class AuthToken(ObtainAuthToken):
             status=status.HTTP_201_CREATED)
 
 
-class AddAndDeleteSubscribe(
-        generics.RetrieveDestroyAPIView,
-        generics.ListCreateAPIView):
-    """Подписка и отписка от пользователя."""
-
-    serializer_class = SubscribeSerializer
-
-    def get_queryset(self):
-        return self.request.user.follower.select_related(
-            'following'
-        ).prefetch_related(
-            'following__recipe'
-        ).annotate(
-            recipes_count=Count('following__recipe'),
-            is_subscribed=Value(True),
-        )
-
-    def get_object(self):
-        user_id = self.kwargs['user_id']
-        user = get_object_or_404(User, id=user_id)
-        self.check_object_permissions(self.request, user)
-        return user
-
-    def create(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if request.user.id == instance.id:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        if request.user.follower.filter(author=instance).exists():
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        subs = request.user.follower.create(author=instance)
-        serializer = self.get_serializer(subs)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def perform_destroy(self, instance):
-        self.request.user.follower.filter(author=instance).delete()
-
-
 class UsersViewSet(UserViewSet):
     """Пользователи."""
-
-    serializer_class = UserListSerializer
+    queryset = User.objects.all()
     permission_classes = (IsAuthenticated,)
 
-    def get_queryset(self):
-        return User.objects.annotate(
-            is_subscribed=Exists(
-                self.request.user.follower.filter(
-                    author=OuterRef('id'))
-            )).prefetch_related(
-                'follower', 'following'
-        ) if self.request.user.is_authenticated else User.objects.annotate(
-            is_subscribed=Value(False))
-
     def get_serializer_class(self):
-        if self.request.method.lower() == 'post':
-            return UserCreateSerializer
-        return UserListSerializer
+        if self.action in ('list', 'retrieve'):
+            return UserListSerializer
+        return UserCreateSerializer
 
     def perform_create(self, serializer):
         password = make_password(self.request.data['password'])
@@ -173,12 +125,49 @@ class UsersViewSet(UserViewSet):
         """Получить на кого пользователь подписан."""
 
         user = request.user
-        queryset = Subscribe.objects.filter(user=user)
+        queryset = User.objects.filter(user=user)
         pages = self.paginate_queryset(queryset)
         serializer = UserListSerializer(
             pages, many=True,
             context={'request': request})
         return self.get_paginated_response(serializer.data)
+    
+    @action(detail=True, methods=['post', 'delete'],
+            permission_classes=(IsAuthenticated,))
+    def subscribe(self, request, id=None):
+        """Метод управления подписками."""
+
+        if request.method == 'POST':
+            user = request.user
+            author = get_object_or_404(User, id=id)
+            if user == author:
+                return Response(
+                    {'errors': 'Вы не можете подписаться сами на себя.'},
+                    status=status.HTTP_400_BAD_REQUEST)
+            if Subscribe.objects.filter(user=user, author=author).exists():
+                return Response(
+                    {'errors': 'Вы уже подписаны на данного пользователя.'},
+                    status=status.HTTP_400_BAD_REQUEST)
+            follower = Subscribe.objects.create(user=user, author=author)
+            serializer = SubscribeSerializer(
+                follower, context={'request': request}
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if request.method == 'DELETE':
+            user = request.user
+            author = get_object_or_404(User, id=id)
+            if user == author:
+                return Response({
+                    'errors': 'Вы не можете отписаться сами от себя.'
+                })
+            follower = Subscribe.objects.filter(user=user, author=author)
+            if follower.exists():
+                follower.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(serializer.data, {
+                'errors': 'Подписка на данного пользователя отменена.'
+            })
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class RecipesViewSet(viewsets.ModelViewSet):

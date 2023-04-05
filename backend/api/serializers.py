@@ -64,19 +64,6 @@ class UserListSerializer(
         fields = (
             'email', 'id', 'username',
             'first_name', 'last_name', 'is_subscribed')
-    
-    def get_recipes(self, obj):
-        request = self.context.get('request')
-        limit = request.GET.get('recipes_limit')
-        recipes = (
-            obj.author.recipe.all()[:int(limit)] if limit
-            else obj.author.recipe.all())
-        return SubscribeRecipeSerializer(
-            recipes,
-            many=True).data
-    
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -282,8 +269,8 @@ class SubscribeRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class SubscribeSerializer(serializers.ModelSerializer,
-                          GetIsSubscribedMixin):
+class SubscribeListSerializer(serializers.ModelSerializer,
+                              GetIsSubscribedMixin):
     id = serializers.IntegerField(
         source='author.id')
     email = serializers.EmailField(
@@ -306,14 +293,15 @@ class SubscribeSerializer(serializers.ModelSerializer,
             'email', 'id', 'username', 'first_name', 'last_name',
             'is_subscribed', 'recipes', 'recipes_count',)
     
-    def validate(self, data):
-        if data['user'] == data['author']:
-            raise serializers.ValidationError('Нельзя подписаться на себя!')
-        if Subscribe.objects.filter(
-            user=data['user'], author=data['author']
-        ).exists():
-            raise serializers.ValidationError('Вы уже подписаны!')
-        return data
+    def get_recipes(self, obj):
+        request = self.context.get('request')
+        limit = request.GET.get('recipes_limit')
+        recipes = (
+            obj.author.recipe.all()[:int(limit)] if limit
+            else obj.author.recipe.all())
+        return SubscribeRecipeSerializer(
+            recipes,
+            many=True).data
     
     def get_recipes_count(self, obj):
         return obj.recipes.count()
