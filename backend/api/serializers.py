@@ -264,7 +264,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         """Метод обновления рецепта."""
 
         instance.tags.clear()
-        RecipeIngredient.objects.filter(recipe=instance).all().delete()
+        RecipeIngredient.objects.filter(recipe=instance).delete()
         self.create_tags(validated_data.pop('tags'), instance)
         self.create_ingredients(validated_data.pop('ingredients'), instance)
         return super().update(instance, validated_data)
