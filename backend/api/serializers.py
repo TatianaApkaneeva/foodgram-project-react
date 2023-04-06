@@ -230,16 +230,15 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     def create_ingredients(self, ingredients, recipe):
         """Метод создания ингредиента."""
 
-        for ingredient in ingredients:
-            ingredient_id = ingredient['id']
-            amount = ingredient['amount']
-            if RecipeIngredient.objects.filter(
-                    recipe=recipe, ingredient=ingredient_id).exists():
-                amount += F('amount')
-            RecipeIngredient.objects.update_or_create(
-                recipe=recipe, ingredient=ingredient_id,
-                defaults={'amount': amount}
-            )
+        create_ingredient = [
+            RecipeIngredient(
+                recipe=recipe,
+                ingredient=ingredient['id'],
+                amount=ingredient['amount']
+                )
+            for ingredient in ingredients
+            ]
+        RecipeIngredient.objects.bulk_create(create_ingredient)
 
     def create_tags(self, tags, recipe):
         """Метод создания тега."""

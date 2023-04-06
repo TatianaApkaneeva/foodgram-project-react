@@ -290,5 +290,5 @@ def set_password(request):
             {'message': 'Пароль изменен!'},
             status=status.HTTP_201_CREATED)
     return Response(
-        {'error': 'Введите цифры и специальные знаки!'},
+        {'error': 'Новый пароль должен содержать цифры и специальные знаки!'},
         status=status.HTTP_400_BAD_REQUEST)
