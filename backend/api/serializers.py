@@ -1,7 +1,6 @@
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
-from django.db.models import F
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
@@ -235,9 +234,9 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
                 recipe=recipe,
                 ingredient=ingredient['id'],
                 amount=ingredient['amount']
-                )
+            )
             for ingredient in ingredients
-            ]
+        ]
         RecipeIngredient.objects.bulk_create(create_ingredient)
 
     def create_tags(self, tags, recipe):
