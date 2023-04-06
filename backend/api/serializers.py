@@ -229,15 +229,12 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     def create_ingredients(self, ingredients, recipe):
         """Метод создания ингредиента."""
 
-        create_ingredient = [
-            RecipeIngredient(
+        for ingredient in ingredients:
+            RecipeIngredient.objects.create(
                 recipe=recipe,
-                ingredient=ingredient['id'],
-                amount=ingredient['amount']
+                ingredient_id=ingredient.get("id"),
+                amount=ingredient.get("amount"),
             )
-            for ingredient in ingredients
-        ]
-        RecipeIngredient.objects.bulk_create(create_ingredient)
 
     def create_tags(self, tags, recipe):
         """Метод создания тега."""
@@ -264,19 +261,18 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         return RecipeReadSerializer(
             instance, context=context).data
 
-    def update(self, instance, validated_data):
+    def update(self, recipe, validated_data):
         """Метод обновления рецепта."""
 
-        if 'ingredients' in validated_data:
-            ingredients = validated_data.pop('ingredients')
-            instance.ingredients.clear()
-            self.create_ingredients(ingredients, instance)
-        if 'tags' in validated_data:
-            instance.tags.set(
-                validated_data.pop('tags'))
-        return super().update(
-            instance, validated_data)
-    
+        if "ingredients" in self.initial_data:
+            ingredients = validated_data.pop("ingredients")
+            recipe.ingredients.clear()
+            self.create_ingredients(ingredients, recipe)
+        if "tags" in self.initial_data:
+            tags_data = validated_data.pop("tags")
+            recipe.tags.set(tags_data)
+        return super().update(recipe, validated_data)
+
 
 class RecipeReadSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
