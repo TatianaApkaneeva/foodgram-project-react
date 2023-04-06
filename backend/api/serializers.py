@@ -1,6 +1,7 @@
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
+from django.db.models import F
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
@@ -189,6 +190,10 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     def validate(self, validated_data):
         ingredients = validated_data.get('ingredients')
         ingredients_list = []
+        if not ingredients:
+            raise serializers.ValidationError({
+                'Необходимо выбрать ингредиенты!'
+            })
         for ingredient in ingredients:
             ingredient_id = ingredient['id']
             if ingredient_id in ingredients_list:
@@ -221,15 +226,20 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
                 'cooking_time': 'Время не может быть нулевым.'
             })
         return validated_data
-
+    
     def create_ingredients(self, ingredients, recipe):
         """Метод создания ингредиента."""
 
         for ingredient in ingredients:
-            RecipeIngredient.objects.create(
-                recipe=recipe,
-                ingredient_id=ingredient.get('id'),
-                amount=ingredient.get('amount'), )
+            ingredient_id = ingredient['id']
+            amount = ingredient['amount']
+            if RecipeIngredient.objects.filter(
+                    recipe=recipe, ingredient=ingredient_id).exists():
+                amount += F('amount')
+            RecipeIngredient.objects.update_or_create(
+                recipe=recipe, ingredient=ingredient_id,
+                defaults={'amount': amount}
+            )
 
     def create_tags(self, tags, recipe):
         """Метод создания тега."""
