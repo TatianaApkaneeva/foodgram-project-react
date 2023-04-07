@@ -191,7 +191,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         ingredients_list = []
         if not ingredients:
             raise serializers.ValidationError(
-                {'ingredients':[{'id':['Выберите ингредиент из списка!']}]}
+                {'Выберите ингредиент из списка!'}
             )
         for ingredient in ingredients:
             ingredient_id = ingredient['id']
