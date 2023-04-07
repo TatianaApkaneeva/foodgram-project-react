@@ -286,9 +286,5 @@ def set_password(request):
         context={'request': request})
     if serializer.is_valid():
         serializer.save()
-        return Response(
-            {'message': 'Пароль изменен!'},
-            status=status.HTTP_201_CREATED)
-    return Response(
-        {'error': 'Новый пароль должен содержать цифры и специальные знаки!'},
-        status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
