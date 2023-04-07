@@ -190,9 +190,10 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         ingredients = validated_data.get('ingredients')
         ingredients_list = []
         if not ingredients:
-            raise serializers.ValidationError({
-                'Необходимо выбрать ингредиенты!'
-            })
+            raise serializers.ValidationError(
+                {'ingredients':[{},{},{},{'id':
+                                          ['Выберите ингредиент из списка!']}]}
+            )
         for ingredient in ingredients:
             ingredient_id = ingredient['id']
             if ingredient_id in ingredients_list:
