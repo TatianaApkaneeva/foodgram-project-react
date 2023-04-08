@@ -4,7 +4,6 @@ from django.contrib.auth.hashers import make_password
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from rest_framework.exceptions import ValidationError
 
 from recipes.models import Ingredient, Recipe, RecipeIngredient, Subscribe, Tag
 
