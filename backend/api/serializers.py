@@ -193,15 +193,11 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'Выберите ингредиент из списка!'}
             )
-        list_ingr = [
-            item['ingredient'] for item in validated_data['ingredients']
-        ]
-        all_ingredients, distinct_ingredients = (
-            len(list_ingr), len(set(list_ingr)))
-        if all_ingredients != distinct_ingredients:
-            raise ValidationError(
-                {'error': 'Ингредиенты должны быть уникальными'}
-            )
+        errors = [f'Выберите кол-во для ингредиента {ingredients.name}']
+        for ingredients in validated_data['ingredients']:
+            if int(ingredients['amount']) <= 0:
+                if errors:
+                    raise ValidationError(errors)
 
         tags = validated_data.get('tags')
         if not tags:
