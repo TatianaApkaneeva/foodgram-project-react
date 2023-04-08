@@ -188,22 +188,22 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     
     def validate(self, validated_data):
         ingredients = validated_data.get('ingredients')
-        ingredients_list = []
         if not ingredients:
             raise serializers.ValidationError(
                 {'Выберите ингредиент из списка!'}
             )
+        ingredients_list = []
         for ingredient in ingredients:
             ingredient_id = ingredient['id']
             if ingredient_id in ingredients_list:
                 raise serializers.ValidationError({
-                    'ingredients': 'Такой ингредиент уже есть в рецепте.'
+                    'ingredients': 'Такой ингредиент {'id'} уже есть в рецепте.'
                 })
             ingredients_list.append(ingredient_id)
             amount = ingredient['amount']
             if int(amount) <= 0:
                 raise serializers.ValidationError({
-                    'amount': 'Количество не может быть меньше или = 0.'
+                    'amount': 'Количество {'id'} не может быть меньше или = 0.'
                 })
 
         tags = validated_data.get('tags')
