@@ -186,26 +186,22 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('author',)
     
-    def validate_ingredients(self, validated_data):
+    def validate_ingredients(self, data):
         """Валидатор для ингредиентов"""
-        ingredients = validated_data.get('ingredients')
-        ingredients_list = []
-        if not ingredients:
-            raise serializers.ValidationError(
-                {'Выберите ингредиент из списка!'}
-            )
-        for ingredient in ingredients:
-            ingredient_id = ingredient['id']
-            if ingredient_id in ingredients_list:
-                raise serializers.ValidationError(
-                     F'Ингредиент {ingredient_id} повторяется'
-                )
-            ingredients_list.append(ingredient_id)
-            amount = ingredient['amount']
-            if int(amount) <= 0:
+        ingredients = self.initial_data.get('ingredients')
+        list = []
+        for i in ingredients:
+            amount = i['amount']
+            if int(amount) < 1:
                 raise serializers.ValidationError({
-                    'amount': 'Количество не может быть меньше или = 0.'
+                    'amount': 'Количество {i} ингредиента должно быть > 0!'
                 })
+            if i['id'] in list:
+                raise serializers.ValidationError({
+                    'ingredient': 'Ингредиент {i} должны быть уникальными!'
+                })
+            list.append(i['id'])
+        return data
     
     def validate_time_tag(self, validated_data):
         tags = validated_data.get('tags')
