@@ -186,30 +186,26 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('author',)
     
-    def validate_ingredients(self, data):
+    def validate_ingredients(self, validated_data):
         """Валидатор для ингредиентов"""
+        ingredients = validated_data.get('ingredients')
         ingredients_list = []
-        if 'ingredients' in data:
-            ingredients = data['ingredients']
-            for ingredient in ingredients:
-                ingredient = ingredient['ingredients'].get('id')
-
-                if ingredient in ingredients_list:
-                    raise serializers.ValidationError(
-                        F'Ингредиент {ingredient} повторяется')
-                ingredients_list.append(ingredient)
-
-            all_ingredients = Ingredient.objects.all().values_list(
-                'id', flat=True)
-
-            if not set(ingredients_list).issubset(all_ingredients):
+        if not ingredients:
+            raise serializers.ValidationError(
+                {'Выберите ингредиент из списка!'}
+            )
+        for ingredient in ingredients:
+            ingredient_id = ingredient['id']
+            if ingredient_id in ingredients_list:
                 raise serializers.ValidationError(
-                    'Указанного ингредиента не существует')
-
-            if len(ingredients_list) == 0:
-                raise serializers.ValidationError(
-                        'Список ингредиентов не должен быть пустым')
-        return data
+                     F'Ингредиент {ingredient_id} повторяется'
+                )
+            ingredients_list.append(ingredient_id)
+            amount = ingredient['amount']
+            if int(amount) <= 0:
+                raise serializers.ValidationError({
+                    'amount': 'Количество не может быть меньше или = 0.'
+                })
     
     def validate_time_tag(self, validated_data):
         tags = validated_data.get('tags')
