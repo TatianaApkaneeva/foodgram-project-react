@@ -187,18 +187,17 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('author',)
     
-    def validate(self, validated_data):
-        ingredients = validated_data.get('ingredients')
+    def validate_ingredients(self, validated_data):
+        """Валидатор для ингредиентов"""
+        ingredients = self.validated_data.get('ingredients')
         if not ingredients:
-            raise serializers.ValidationError(
-                {'Выберите ингредиент из списка!'}
-            )
-        errors = [f'Выберите кол-во для ингредиента {ingredients.name}']
-        for ingredients in validated_data['ingredients']:
-            if int(ingredients['amount']) <= 0:
-                if errors:
-                    raise ValidationError(errors)
-
+            raise ValidationError('Нужно выбрать минимум 1 ингридиент!')
+        for ingredient in ingredients:
+            if int(ingredient['amount']) <= 0:
+                raise ValidationError('Количество должно быть положительным!')
+        return validated_data
+    
+    def validate_time_tag(self, validated_data):
         tags = validated_data.get('tags')
         if not tags:
             raise serializers.ValidationError({
