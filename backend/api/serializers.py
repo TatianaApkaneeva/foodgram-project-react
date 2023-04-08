@@ -189,7 +189,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     
     def validate_ingredients(self, validated_data):
         """Валидатор для ингредиентов"""
-        ingredients = self.validated_data.get('ingredients')
+        ingredients = validated_data.get('ingredients')
         if not ingredients:
             raise ValidationError('Нужно выбрать минимум 1 ингридиент!')
         for ingredient in ingredients:
