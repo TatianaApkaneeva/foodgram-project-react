@@ -4,6 +4,7 @@ from django.contrib.auth.hashers import make_password
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
+from rest_framework.exceptions import ValidationError
 
 from recipes.models import Ingredient, Recipe, RecipeIngredient, Subscribe, Tag
 
@@ -192,19 +193,15 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'Выберите ингредиент из списка!'}
             )
-        ingredients_list = []
-        for ingredient in ingredients:
-            ingredient_id = ingredient['id']
-            if ingredient_id in ingredients_list:
-                raise serializers.ValidationError({
-                    'ingredients': 'Такой ингредиент {'id'} уже есть в рецепте.'
-                })
-            ingredients_list.append(ingredient_id)
-            amount = ingredient['amount']
-            if int(amount) <= 0:
-                raise serializers.ValidationError({
-                    'amount': 'Количество {'id'} не может быть меньше или = 0.'
-                })
+        list_ingr = [
+            item['ingredient'] for item in validated_data['ingredients']
+        ]
+        all_ingredients, distinct_ingredients = (
+            len(list_ingr), len(set(list_ingr)))
+        if all_ingredients != distinct_ingredients:
+            raise ValidationError(
+                {'error': 'Ингредиенты должны быть уникальными'}
+            )
 
         tags = validated_data.get('tags')
         if not tags:
