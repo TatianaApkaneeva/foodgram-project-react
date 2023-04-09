@@ -4,6 +4,7 @@ from django.contrib.auth.hashers import make_password
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
+from rest_framework.exceptions import ValidationError
 
 from recipes.models import Ingredient, Recipe, RecipeIngredient, Subscribe, Tag
 
@@ -168,6 +169,16 @@ class IngredientsEditSerializer(serializers.ModelSerializer):
         model = Ingredient
         fields = ('id', 'amount')
 
+    def validate_amount(self, data):
+        if int(data) < 1:
+            raise ValidationError({
+                'ingredients': (
+                    'Количество должно быть больше 1'
+                ),
+                'msg': data
+            })
+        return data
+
 
 class RecipeWriteSerializer(serializers.ModelSerializer):
     image = Base64ImageField(
@@ -191,11 +202,6 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         ingredients = self.initial_data.get('ingredients')
         list = []
         for i in ingredients:
-            amount = i['amount']
-            if int(amount) < 1:
-                raise serializers.ValidationError({
-                    'amount': 'Количество ингредиента должно быть > 0!'
-                })
             if i['id'] in list:
                 raise serializers.ValidationError({
                     'ingredient': 'Ингредиент должны быть уникальными!'
