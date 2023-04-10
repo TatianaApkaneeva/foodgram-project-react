@@ -172,10 +172,8 @@ class IngredientsEditSerializer(serializers.ModelSerializer):
     def validate_amount(self, data):
         if int(data) < 1:
             raise ValidationError({
-                'ingredients': (
+                'ingredients':
                     'Количество должно быть больше 1'
-                ),
-                'msg': data
             })
         return data
 
